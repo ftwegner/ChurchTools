@@ -1,0 +1,144 @@
+import requests
+import locale
+import os
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+# Lese die Base URL und das Token aus Umgebungsvariablen
+BASE_URL = os.getenv("CHURCHTOOLS_BASE_URL")
+TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
+
+if not BASE_URL:
+    raise ValueError("Die ChurchTools Base URL ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_BASE_URL' definieren.")
+
+if not TOKEN:
+    raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
+
+def get_users():
+    # Finde alle Benutzer, bei denen ein erweitertes Führundgzeugnis benötigt wird
+    # und prüfe ob das Führungszeugnis abgelaufen ist
+
+    # Lade alle Benutzer von ChurchTools
+    headers = {
+        "Authorization": f"Login {TOKEN}"
+    }
+    response = requests.get(f"{BASE_URL}/persons", headers=headers)
+    response.raise_for_status()
+    users = response.json().get("data", [])
+    pages = response.json().get("meta").get("pagination").get("lastPage")
+    for page in range(2, pages + 1):
+        response = requests.get(f"{BASE_URL}/persons?page={page}", headers=headers)
+        response.raise_for_status()
+        users.extend(response.json().get("data", []))
+    
+
+    # Filtere die Benutzer, die ein erweitertes Führungszeugnis benötigen
+
+
+    # Initialisiere die Variablen
+
+    # Die Überschrift für die verschiedenen Statuswerte:
+    ef_fehlt_head = "Ein erweitertes Führungszeugnis fehlt für:\n"
+    ef_abgelaufen_head = "Das erweiterte Führungszeugnis ist nicht mehr gültig für:\n"
+    ef_alt_head = "Das erweiterte Führungszeugnis wird innerhalb von 3 Monaten ungültig für:\n"
+    ef_ok_head = "Das erweiterte Führungszeugnis ist ok für:\n"
+
+    # Dies sind die Textvariablen für die verschiedenen Listen der Benutzer
+    ef_fehlt = ""
+    ef_abgelaufen = ""  
+    ef_alt = ""
+    ef_ok = ""
+
+    # Dies ist der Text, der als Gesamtbericht zurückgegeben wird.
+    user_data = ""
+
+    # Setze die Locale auf Deutsch, damit der ausgeschriebene Monatsname in den Datumsangaben auf Deutsch ist
+    locale.setlocale(locale.LC_TIME, "de_DE")
+
+    # Das DatumIm Feld ef_datum (Erstellung des erweiterten Führungszeugnisses) ein Datum eingetragen ist
+
+    # Prüfe alle Benutzer
+    for user in users:
+        # Wird ein erweitertes Führungszeuignis benötigt?
+        # Dazu muss der Wert in ef_benoetigt ("Benötigt ein erweitertes Führungszeugnis") auf True stehen
+        if user.get("ef_benoetigt"):
+            # Ja, es wird ein Führungszeugnis benötigt
+
+            # Prüpfe, ob ein Führungszeugnis vorhanden ist. 
+            # D.h. ob in dem Feld ef_datum (Erstellung des erweiterten Führungszeugnisses) ein Datum eingetragen ist
+            ef_datum = str(user.get("ef_datum"))
+            if ef_datum == "None":
+                # Es ist kein Datum vorthanden, das benötigte Führungszeugnis fehlt
+                # Füge den Benutzer zur Liste ef_fehlt hinzu
+                ef_fehlt += f"- {user.get('firstName')} {user.get('lastName')}\n"
+            else:
+                # Es gibt ein Führungszeugnis mit einem Erstellungsdatum
+                # Wir prüfen, ob es nich gültig ist oder bald ungültig wird
+
+                ef_date = datetime.strptime(ef_datum, "%Y-%m-%d")
+                ef_datum = ef_date.strftime("%#d. %B %Y")
+                ef_expiry = ef_date + relativedelta(years=3)
+                ef_ablauf = ef_expiry.strftime("%#d. %B %Y")
+                ef_warn = ef_expiry - relativedelta(months=3)
+                if ef_expiry < datetime.now():
+                    ef_abgelaufen += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist am {ef_ablauf} abgelaufen.\n"
+                elif ef_warn < datetime.now():
+                    ef_alt += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} läuft am {ef_ablauf} ab.\n"
+                else:
+                    ef_ok += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist bis zum {ef_ablauf} gültig.\n"
+
+    if len(ef_fehlt) > 0:
+        user_data += ef_fehlt_head + ef_fehlt + "\n"
+    if len(ef_abgelaufen) > 0:
+        user_data += ef_abgelaufen_head + ef_abgelaufen + "\n"
+    if len(ef_alt) > 0:
+        user_data += ef_alt_head + ef_alt + "\n"
+    if len(ef_ok) > 0:
+        user_data += ef_ok_head + ef_ok + "\n"
+    return user_data
+
+def delete_previous_posts():
+    # Get previous post
+    headers = {
+        "Authorization": f"Login {TOKEN}",
+        "accept": "application/json"
+    }
+    response = requests.get(f"{BASE_URL}/posts?actor_ids%5B%5D=1&group_ids%5B%5D=153&limit=5&only_my_groups=true", headers=headers)
+    response.raise_for_status()
+    posts = response.json().get("data", [])
+    for post in posts:
+        if post.get("title") == "Status der erweiterten Führungszeugnisse":
+            # Delete the previous post
+            response = requests.delete( f"{BASE_URL}/posts/{post.get("id")}", headers=headers)
+            response.raise_for_status()
+            # use "continue" in case we have multiple posts with the same title - to clean up any potential errors
+            continue
+    
+def post_to_group(message):
+    # Example:  "expirationDate": "2029-10-19T12:00:00Z",
+    text = {
+  "content": message,
+  "title": "Status der erweiterten Führungszeugnisse",
+  "visibility": "group_visible",
+  "commentsActive": True,
+  "groupId": 153
+}
+    # Define the headers
+    headers = {
+        "Authorization": f"Login {TOKEN}",
+        "Content-Type": "application/json"
+    }
+    # Make the POST request
+    response = requests.post(f"{BASE_URL}/posts", headers=headers, json=text)
+
+    # Raise an exception if the request fails
+    response.raise_for_status()
+
+def main():
+    # Fetch users and their custom field data
+    delete_previous_posts()
+    post_to_group(get_users())
+    #print(get_users())
+
+if __name__ == "__main__":
+    main()
