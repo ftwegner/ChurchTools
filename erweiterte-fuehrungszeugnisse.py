@@ -8,6 +8,21 @@ from dateutil.relativedelta import relativedelta
 BASE_URL = os.getenv("CHURCHTOOLS_BASE_URL")
 TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
 
+# ChurchTools Instanz spezifische Variablen
+# ---------------------------------------------------------
+# ID der Gruppe (Merkmal) der Verantwortlichen für die Führungszeugnisse, in der die Posts veröffentlicht werden sollen
+GROUP_ID = 153
+
+# Name der Tabellenspalte, die anzeigt, dass ein Mitarbeiter ein erweitertes Führungszeugnis benötigt
+# Die ist ein Ja-Nein-Feld
+needs_ef_col = "ef_benoetigt"
+
+# Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält 
+# Dies ist ein Datumsfeld
+ef_date_col = "ef_datum"
+# ---------------------------------------------------------
+
+
 if not BASE_URL:
     raise ValueError("Die ChurchTools Base URL ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_BASE_URL' definieren.")
 
@@ -61,12 +76,12 @@ def get_users():
     for user in users:
         # Wird ein erweitertes Führungszeuignis benötigt?
         # Dazu muss der Wert in ef_benoetigt ("Benötigt ein erweitertes Führungszeugnis") auf True stehen
-        if user.get("ef_benoetigt"):
+        if user.get(needs_ef_col):
             # Ja, es wird ein Führungszeugnis benötigt
 
             # Prüpfe, ob ein Führungszeugnis vorhanden ist. 
             # D.h. ob in dem Feld ef_datum (Erstellung des erweiterten Führungszeugnisses) ein Datum eingetragen ist
-            ef_datum = str(user.get("ef_datum"))
+            ef_datum = str(user.get(ef_date_col))
             if ef_datum == "None":
                 # Es ist kein Datum vorthanden, das benötigte Führungszeugnis fehlt
                 # Füge den Benutzer zur Liste ef_fehlt hinzu
@@ -103,7 +118,7 @@ def delete_previous_posts():
         "Authorization": f"Login {TOKEN}",
         "accept": "application/json"
     }
-    response = requests.get(f"{BASE_URL}/posts?actor_ids%5B%5D=1&group_ids%5B%5D=153&limit=5&only_my_groups=true", headers=headers)
+    response = requests.get(f"{BASE_URL}/posts?actor_ids%5B%5D=1&group_ids%5B%5D={GROUP_ID}&limit=5&only_my_groups=true", headers=headers)
     response.raise_for_status()
     posts = response.json().get("data", [])
     for post in posts:
@@ -121,7 +136,7 @@ def post_to_group(message):
   "title": "Status der erweiterten Führungszeugnisse",
   "visibility": "group_visible",
   "commentsActive": True,
-  "groupId": 153
+  "groupId": GROUP_ID
 }
     # Define the headers
     headers = {
