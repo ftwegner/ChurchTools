@@ -24,7 +24,7 @@ ef_date_col = "ef_datum"
 ef_valid_years = 3
 
 # Wieviele Monate vor Ablauf eines erweiterten Führungszeugnisses soll gewarnt werden
-ef_warn_months = 1
+ef_warn_months = 3
 # -----------------------------------------------------------------------
 
 # Lese das Zugangstoken aus der Umgebungsvariablen
