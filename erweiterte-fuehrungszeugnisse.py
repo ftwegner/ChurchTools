@@ -34,7 +34,7 @@ if not TOKEN:
     raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
 
 if not (isinstance(GROUP_ID, int) and GROUP_ID > 0):
-    raise ValueError(f"GROUP_ID muss eine positive Zahl sein. Gefunden: {GROUP_ID}")
+    raise ValueError(f"GROUP_ID muss eine positive ganze Zahl sein. Gefunden: {GROUP_ID}")
 
 if not (isinstance(ef_valid_years, int) and ef_valid_years > 0):
     raise ValueError(f"Die Anzahl der Jahre (ef_valid_years) muss eine positive ganze Zahl sein. Gefunden: {ef_valid_years}")
