@@ -1,2 +1,0 @@
-# ChurchTools
-ChurchTools Python code
