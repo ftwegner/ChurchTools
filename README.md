@@ -1,10 +1,12 @@
 # Erweiterte Führungszeugnisse in ChurchTools
 
-Für bestimmte MitarbeiterInnen einer Kirchengemeinde wird oft ein erweitertes Führungszeugnis benötigt. Dieses ist 3 Jahre lang gültig.
+Für bestimmte MitarbeiterInnen einer Kirchengemeinde wird oft ein erweitertes Führungszeugnis benötigt. Dieses ist eine bestimmte Zahl an Jahreen gültig (Default = 3 Jahre). Diese Zahl kann hier angepasst werden.
 
-Dieses Script erzeugt einen Beitrag in einer Gruppe von Verantwortlichen, die sich um Führungszeugnisse kümmern, und informiert über den Status der erweiterten Führungszeugnisse. Es wird empfohlen, dieses Script einmal pro Woche auszuführen. Idealerweise geschieht dies automatisch über den Windows Task Scheduler oder einen cron Job.
+Dieses Script erzeugt einen Beitrag in einer Gruppe von Verantwortlichen, die sich um Führungszeugnisse kümmern, und informiert über den Status der erweiterten Führungszeugnisse. Dabei wird gewarnt, wenn 
 
-Der generierte Beitrag enthält eine Liste der MitabreiterInnen, mit den folgenden Kategorien (Ein Beispiel vom April 2025):
+Es wird empfohlen, dieses Script einmal pro Woche auszuführen. Idealerweise geschieht dies automatisch über den Windows Task Scheduler oder einen cron Job.
+
+Der generierte Beitrag enthält eine Liste der MitabreiterInnen, mit den folgenden Kategorien (Ein Beispiel vom April 2025 mit den Default Werten für Gültigkeit und Warnung - 3 Jahre bzw. 3 Monate):
 
 > **Status der erweiterten Führungszeugnisse**
 >
@@ -87,6 +89,12 @@ needs_ef_col = "ef_benoetigt"
 # Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält 
 # Dies ist ein Datumsfeld
 ef_date_col = "ef_datum"
+
+# Wieviele Jahre ist ein erweitertes Führungszeugnis gültig
+ef_valid_years = 3
+
+# Wieviele Monate vor Ablauf eines erweiterten Führungszeugnisses soll gewarnt werden
+ef_warn_months = 3
 # -----------------------------------------------------------------------
 ```
 
@@ -164,6 +172,11 @@ In Windows:
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
+
+git add files
+
+git commit -am "text"
+git push 
 ```
 
 Install git auf Windows: https://git-scm.com/downloads/win

@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 # ChurchTools Instanz spezifische Variablen, die angepasst werden müssen
 # ----------------------------------------------------------------------
 # Base URL der ChurchTools Instanz API
-CHURCHTOOLS_BASE_URL = "https://volksdorf.church.tools/api"
+BASE_URL = "https://volksdorf.church.tools/api"
 
 # ID der Gruppe (Merkmal) der Verantwortlichen für die Führungszeugnisse, in der die Posts veröffentlicht werden sollen
 GROUP_ID = 153
@@ -19,6 +19,12 @@ needs_ef_col = "ef_benoetigt"
 # Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält 
 # Dies ist ein Datumsfeld
 ef_date_col = "ef_datum"
+
+# Wieviele Jahre ist ein erweitertes Führungszeugnis gültig
+ef_valid_years = 3
+
+# Wieviele Monate vor Ablauf eines erweiterten Führungszeugnisses soll gewarnt werden
+ef_warn_months = 1
 # -----------------------------------------------------------------------
 
 # Lese das Zugangstoken aus der Umgebungsvariablen
@@ -27,6 +33,14 @@ TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
 if not TOKEN:
     raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
 
+if not (isinstance(GROUP_ID, int) and GROUP_ID > 0):
+    raise ValueError(f"GROUP_ID muss eine positive Zahl sein. Gefunden: {GROUP_ID}")
+
+if not (isinstance(ef_valid_years, int) and ef_valid_years > 0):
+    raise ValueError(f"Die Anzahl der Jahre (ef_valid_years) muss eine positive ganze Zahl sein. Gefunden: {ef_valid_years}")
+
+if not (isinstance(ef_warn_months, int) and ef_warn_months > 0):
+    raise ValueError(f"Die Anzahl der Monate (ef_warn_months) muss eine positive ganze Zahl sein. Gefunden: {ef_warn_months}")
 
 def get_users():
     # Finde alle Benutzer, bei denen ein erweitertes Führundgzeugnis benötigt wird
@@ -53,7 +67,13 @@ def get_users():
     # Die Überschrift für die verschiedenen Statuswerte:
     ef_fehlt_head = "Ein erweitertes Führungszeugnis fehlt für:\n"
     ef_abgelaufen_head = "Das erweiterte Führungszeugnis ist nicht mehr gültig für:\n"
-    ef_alt_head = "Das erweiterte Führungszeugnis wird innerhalb von 3 Monaten ungültig für:\n"
+
+    if ef_warn_months == 1:
+        months_text = "einem Monat"
+    else:
+        months_text = f"{ef_warn_months} Monaten"
+
+    ef_alt_head = f"Das erweiterte Führungszeugnis wird innerhalb von {months_text} ungültig für:\n"
     ef_ok_head = "Das erweiterte Führungszeugnis ist ok für:\n"
 
     # Dies sind die Textvariablen für die verschiedenen Listen der Benutzer
@@ -90,9 +110,9 @@ def get_users():
 
                 ef_date = datetime.strptime(ef_datum, "%Y-%m-%d")
                 ef_datum = ef_date.strftime("%#d. %B %Y")
-                ef_expiry = ef_date + relativedelta(years=3)
+                ef_expiry = ef_date + relativedelta(years=ef_valid_years)
                 ef_ablauf = ef_expiry.strftime("%#d. %B %Y")
-                ef_warn = ef_expiry - relativedelta(months=3)
+                ef_warn = ef_expiry - relativedelta(months=ef_warn_months)
                 if ef_expiry < datetime.now():
                     ef_abgelaufen += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist am {ef_ablauf} abgelaufen.\n"
                 elif ef_warn < datetime.now():
