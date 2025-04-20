@@ -1,15 +1,14 @@
 import requests
 import locale
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-# Lese die Base URL und das Token aus Umgebungsvariablen
-BASE_URL = os.getenv("CHURCHTOOLS_BASE_URL")
-TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
+# ChurchTools Instanz spezifische Variablen, die angepasst werden müssen
+# ----------------------------------------------------------------------
+# Base URL der ChurchTools Instanz API
+CHURCHTOOLS_BASE_URL = "https://volksdorf.church.tools/api"
 
-# ChurchTools Instanz spezifische Variablen
-# ---------------------------------------------------------
 # ID der Gruppe (Merkmal) der Verantwortlichen für die Führungszeugnisse, in der die Posts veröffentlicht werden sollen
 GROUP_ID = 153
 
@@ -20,14 +19,14 @@ needs_ef_col = "ef_benoetigt"
 # Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält 
 # Dies ist ein Datumsfeld
 ef_date_col = "ef_datum"
-# ---------------------------------------------------------
+# -----------------------------------------------------------------------
 
-
-if not BASE_URL:
-    raise ValueError("Die ChurchTools Base URL ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_BASE_URL' definieren.")
+# Lese das Zugangstoken aus der Umgebungsvariablen
+TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
 
 if not TOKEN:
     raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
+
 
 def get_users():
     # Finde alle Benutzer, bei denen ein erweitertes Führundgzeugnis benötigt wird
@@ -47,8 +46,7 @@ def get_users():
         users.extend(response.json().get("data", []))
     
 
-    # Filtere die Benutzer, die ein erweitertes Führungszeugnis benötigen
-
+    # Benutzer bestimmen, die ein erweitertes Führungszeugnis benötigen
 
     # Initialisiere die Variablen
 
@@ -118,7 +116,7 @@ def delete_previous_posts():
         "Authorization": f"Login {TOKEN}",
         "accept": "application/json"
     }
-    response = requests.get(f"{BASE_URL}/posts?actor_ids%5B%5D=1&group_ids%5B%5D={GROUP_ID}&limit=5&only_my_groups=true", headers=headers)
+    response = requests.get(f"{BASE_URL}/posts?group_ids%5B%5D={GROUP_ID}&limit=5&only_my_groups=true", headers=headers)
     response.raise_for_status()
     posts = response.json().get("data", [])
     for post in posts:

@@ -1,10 +1,10 @@
 # Erweiterte Führungszeugnisse in ChurchTools
 
-Für bestimmte MitarbeiterInnen einer Kirchengemeinde wird ein erweitertes Führungszeugnis benötigt. Dieses ist 3 Jahre lang gültig.
+Für bestimmte MitarbeiterInnen einer Kirchengemeinde wird oft ein erweitertes Führungszeugnis benötigt. Dieses ist 3 Jahre lang gültig.
 
-Dieses Script erzeugt einen Beitrag in einer Gruppe von Verantwortlichen, die sich um Führungszeugnisse kümmern, und informiert über den Status der erweiterten Führungszeugnisse. 
+Dieses Script erzeugt einen Beitrag in einer Gruppe von Verantwortlichen, die sich um Führungszeugnisse kümmern, und informiert über den Status der erweiterten Führungszeugnisse. Es wird empfohlen, dieses Script einmal pro Woche auszuführen. Idealerweise geschieht dies automatisch über den Windows Task Scheduler oder einen cron Job.
 
-Der angezeigt Status enthält eine Liste der MitabreiterInnen, mit den folgenden Kategorien (Ein Beispiel vom April 2025):
+Der generierte Beitrag enthält eine Liste der MitabreiterInnen, mit den folgenden Kategorien (Ein Beispiel vom April 2025):
 
 > **Status der erweiterten Führungszeugnisse**
 >
@@ -21,11 +21,20 @@ Der angezeigt Status enthält eine Liste der MitabreiterInnen, mit den folgenden
 > - Vorname4 Nachname4: Das Führungszeugnis vom 12. März 2024 ist bis zum 12. März 2027 gültig.
 > - Vorname5 Nachname5: Das Führungszeugnis vom 1. März 2025 ist bis zum 1. März 2028 gültig.
 
+Wenn dieses Script ausgeführt wird, werden zunächst eventuell vorhandene Beiträge in dieser Gruppe mit demselben Titel "Status der erweiterten Führungszeugnisse"
+gelöscht. Dann wird der neue Beitrag erzeugt und veröffentlicht. So ist immer genau ein Beitrag mit dem Titel "Status der erweiterten Führungszeugnisse" in dieser Gruppe vorhanden.
+
 ## Voraussetzungen
+
+Damit das Script funktionert wird eine Gruppe benötigt, in der der Status gepostet werden soll. Diese Gruppe muss aus Datenschutzgründen versteckt sein und nur für die Gruppenmitglieder sichtbar sein.
+
+Wir brauchen zwei Felder in den ChurchTools Personen Stammdaten, die Informationen zu den Führungszeugnissen haben.
+
+Auf dem Rechner, auf dem das Skript läuft muss die Umgebungsvariable `CHURCHTOOLS_TOKEN` mit dem ChurchTools Access Token angelegt sein. In ChurchTools Web bekommst du das Token in `Personen & Gruppen > Personenliste > „Person A“ > Berechtigungen > Login-Token`
 
 ### Eine Gruppe (Merkmal) für Personen, die Führungszeugnisse verwalten
 
-In ChurchTools wird eine Gruppe (Merkmal) gebraucht. Personen in dieser Gruppe dürfen Daten zu den Führungszeugnissen sehen und bearbeiten. Das können die PastorInnen und bestimmte MitarbeiterInnen sein wie hauptamtliche Jugend-Verantwortliche oder Vorsitzende des Ehrenamtlichenasusschusses.
+In ChurchTools wird eine Gruppe (Merkmal) (zum Beispiel mit dem Namen "Führungszeugnis-Verantwortliche") gebraucht. Personen in dieser Gruppe dürfen Daten zu den Führungszeugnissen sehen und bearbeiten. Das können die PastorInnen und bestimmte MitarbeiterInnen sein wie hauptamtliche Jugend-Verantwortliche oder Vorsitzende des Ehrenamtlichenasusschusses.
 
 Die Gruppe erhält die folgenden Berechtigungen in Bereich Personen:
 Personen bearbeiten - write access
@@ -61,10 +70,13 @@ Sicherheitslevel: Stufe 4 (Sehr hoch)<br/>
 Sortierung: 11
 
 WICHTIG:
-Ab Zeile 11 werden diese Variablen in der Datei `erweiterte-fuehrungszeugnisse.py`  angepasst:
+Am Anfang der Datei `erweiterte-fuehrungszeugnisse.py` müssen die Variablen angepasst werden:
 ```
-# ChurchTools Instanz spezifische Variablen
-# ---------------------------------------------------------
+# ChurchTools Instanz spezifische Variablen, die angepasst werden müssen
+# ----------------------------------------------------------------------
+# Base URL der ChurchTools Instanz API
+CHURCHTOOLS_BASE_URL = "https://volksdorf.church.tools/api"
+
 # ID der Gruppe (Merkmal) der Verantwortlichen für die Führungszeugnisse, in der die Posts veröffentlicht werden sollen
 GROUP_ID = 153
 
@@ -75,22 +87,16 @@ needs_ef_col = "ef_benoetigt"
 # Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält 
 # Dies ist ein Datumsfeld
 ef_date_col = "ef_datum"
-# ---------------------------------------------------------
+# -----------------------------------------------------------------------
 ```
 
 
-### Umgebungsvariablen
-
-ChurchTools API URL für Volksdorf
-CHURCHTOOLS_BASE_URL = "https://volksdorf.church.tools/api"
+### Umgebungsvariable
 
 ChurchTools Token
 CHURCHTOOLS_TOKEN = (dein Token)
 
-#### ChurchTools Token holen
-In ChurchTools Web: Personen & Gruppen > Personenliste > „Person A“ > Berechtigungen > Login-Token
-
-#### Umgebungsvariablen setzen
+#### Umgebungsvariable setzen
 Um die Umgebungsvariable `CHURCHTOOLS_TOKEN` für den aktuellen Benutzer in Windows zu setzen, kannst du die folgenden Schritte ausführen:
 
 Um die Umgebungsvariable dauerhaft für den Benutzer zu setzen, kannst du sie in der Windows-Umgebungsvariablenkonfiguration hinzufügen:
@@ -161,3 +167,9 @@ pip install -r requirements.txt
 ```
 
 Install git auf Windows: https://git-scm.com/downloads/win
+
+Einmal pro Woche (oder wie gewünscht) kann dies Skript über den Windows Task Scheduler oder einen Linux cron Job automatisch laufen. Der Code könnte ungefähr so aussehen:
+
+```
+"<BASE_PATH>\ChurchTools Utilities/.venv/Scripts/python.exe" "<BASE_PATH>/ChurchTools Utilities/erweiterte-fuehrungszeugnisse.py"
+```
