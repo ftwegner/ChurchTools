@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Konfiguration - ChurchTools Utilities</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">ChurchTools Utilities</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../installation/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../configuration/" class="dropdown-item">Konfiguration</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Erweiterte Führungszeugnisse</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../" class="dropdown-item">Übersicht</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Konfiguration</a>
+</li>
+                                    
+<li>
+    <a href="../usage/" class="dropdown-item">Benutzung</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../usage/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#konfiguration-der-funktion-erweiterte-fuhrungszeugnisse" class="nav-link">Konfiguration der Funktion Erweiterte Führungszeugnisse</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-konfiguration-der-churchtools-stammdaten" class="nav-link">1. Konfiguration der ChurchTools Stammdaten</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-gruppe-fur-verwalterinnen-der-fuhrungszeugnisse" class="nav-link">2. Gruppe für VerwalterInnen der Führungszeugnisse</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-anpassung-der-variablen-im-code" class="nav-link">3. Anpassung der Variablen im Code</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="konfiguration-der-funktion-erweiterte-fuhrungszeugnisse">Konfiguration der Funktion Erweiterte Führungszeugnisse</h1>
+<p>Die Konfiguration besteht aus drei Teilen</p>
+<ol>
+<li>Konfiguration in ChurchTools Stammdaten</li>
+<li>Einrichten einer ChurchTools Gruppe für die VerwalterInnen der Führungszeugnisse</li>
+<li>Anpassen der Variablen im Code</li>
+</ol>
+<h2 id="1-konfiguration-der-churchtools-stammdaten">1. Konfiguration der ChurchTools Stammdaten</h2>
+<p>Es werden zwei neue Felder in den <code>Stammdaten</code> der Personen benötigt im Abschnitt <code>Personenfelder</code>, die Informationen zu den Führungszeugnissen haben.</p>
+<ol>
+<li>
+<p><strong>Erweitertes Führungszeugnis benötigt</strong>
+Ein Ja-Nein-Feld, das per Default "Nein" ist (kein Haken gesetzt). Nur bei den Personen, die ein erweitertes Führungszeugnis benötigen, wird der Haken hier gesetzt, so dass der Wert "Ja" ist.</p>
+<ul>
+<li>Bezeichnung: <code>Erweitertes Führungszeugnis benötigt</code></li>
+<li>Kürzel: <code>Führungszeugnis benötigt</code></li>
+<li>Feldkategorie: <code>Information</code></li>
+<li>Feldtyp: <code>Ja-Nein-Feld</code></li>
+<li>Tabellenspalte: <code>ef_benoetigt</code> (dieser Wert kann in <code>config.py</code> angepasst werden, falls das Feld bereits existiert)</li>
+<li>HTML-Darstellung des Zeilenendes: <code>&lt;br/&gt;</code></li>
+<li>Sicherheitslevel: <code>Stufe 4 (Sehr hoch)</code></li>
+<li>Sortierung: <code>10</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Erstellung des erweiterten Führungszeugnisses</strong>
+Wenn ein erweitertes Führungszeugnis vorgelegt wurde, wird hier das Datum des Führungszeugnisses eingetragen.</p>
+<ul>
+<li>Bezeichnung: <code>Erstellung des erweiterten Führungszeugnisses</code></li>
+<li>Kürzel: <code>Erstellung</code></li>
+<li>Feldkategorie: <code>Information</code></li>
+<li>Feldtyp: <code>Datumsfeld</code></li>
+<li>Tabellenspalte: <code>ef_datum</code> (dieser Wert kann in <code>config.py</code> angepasst werden, falls das Feld bereits existiert)</li>
+<li>HTML-Darstellung des Zeilenendes: <code>&lt;br/&gt;</code></li>
+<li>Sicherheitslevel: <code>Stufe 4 (Sehr hoch)</code></li>
+<li>Sortierung: <code>11</code></li>
+</ul>
+</li>
+</ol>
+<h2 id="2-gruppe-fur-verwalterinnen-der-fuhrungszeugnisse">2. Gruppe für VerwalterInnen der Führungszeugnisse</h2>
+<p>Damit das Script funktionert wird eine Gruppe benötigt, in der der Status gepostet werden soll. Diese Gruppe muss aus Datenschutzgründen versteckt sein und nur für die Gruppenmitglieder sichtbar sein.</p>
+<p>In ChurchTools wird eine Gruppe vom Typ <code>Merkmal</code> (zum Beispiel mit dem Namen <code>Führungszeugnis-Verantwortliche</code>) gebraucht. Personen in dieser Gruppe dürfen Daten zu den Führungszeugnissen sehen und bearbeiten. Das können die PastorInnen und bestimmte MitarbeiterInnen sein wie hauptamtliche Jugend-Verantwortliche oder Vorsitzende des Ehrenamtlichenasusschusses.</p>
+<p>Die Gruppe erhält die folgenden Berechtigungen in Bereich <code>Personen</code>:
+* <code>Personen bearbeiten</code> - write access
+* <code>Personendaten sehen bis Sicherheitslevel Stufe 4 (Sehr hoch)</code> - security level person(4)</p>
+<p>Für diese Gruppe wir die Funktion <code>Beiträge</code> aktiviert.</p>
+<h2 id="3-anpassung-der-variablen-im-code">3. Anpassung der Variablen im Code</h2>
+<p>In der Datei <code>config.py</code> müssen die Variablen angepasst werden:</p>
+<pre><code># Für die Funktion der erweiterten Führuzngszeugnisse
+# -----------------------------------------------------------------------
+# ID der Gruppe (Merkmal) der Verantwortlichen für die Führungszeugnisse
+GROUP_ID = 153
+
+# Name der Tabellenspalte, die anzeigt, dass ein Mitarbeiter ein Führungszeugnis benötigt
+needs_ef_col = &quot;ef_benoetigt&quot;
+
+# Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält
+ef_date_col = &quot;ef_datum&quot;
+
+# Wieviele Jahre ist ein Führungszeugnis gültig
+ef_valid_years = 3
+
+# Wieviele Monate vor Ablauf eines Führungszeugnisses soll gewarnt werden
+ef_warn_months = 3
+# -----------------------------------------------------------------------
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
