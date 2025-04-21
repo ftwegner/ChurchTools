@@ -52,7 +52,9 @@ Damit die ChurchTools Utilities funktioneren, muss auf dem Rechner, auf dem die 
 #### ChurchTools Access Token besorgen
 In ChurchTools Web bekommst du das Token in `Personen & Gruppen > Personenliste > „Person A“ > Berechtigungen > Login-Token`
 
-### 2. Umgebungsvariable `CHURCHTOOLS_TOKEN` setzen
+### 2. Umgebungsvariablen setzen
+ `CHURCHTOOLS_TOKEN` 
+ `SMTP_PASSWORD` - wenn die EMail Funktionalität genutzt werden soll
 
 #### Windows
 Um die Umgebungsvariable `CHURCHTOOLS_TOKEN` für den aktuellen Benutzer in Windows zu setzen, führe die folgenden Schritte aus:

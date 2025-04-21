@@ -4,7 +4,13 @@ import os
 import sys
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from config import BASE_URL, GROUP_ID, needs_ef_col, ef_date_col, ef_valid_years, ef_warn_months
+from config import BASE_URL, GROUP_ID, needs_ef_col, ef_date_col, ef_valid_years, ef_warn_months, use_email, smtp_server, smtp_port, smtp_username, email_recipients
+if use_email:
+    # Import smtplib for the actual sending function
+    import smtplib
+
+    # Here are the email package modules we'll need
+    from email.mime.text import MIMEText
 
 # Prüfe, ob mindestens Python 3.6 installiert ist
 # Diese Version ist notwendig, um die Datetime- und Dateutil-Bibliotheken und f-Strings zu verwenden.
@@ -14,8 +20,14 @@ if sys.version_info < (3, 6):
 # Lese das Zugangstoken aus der Umgebungsvariablen
 TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
 
+# Lese die SMTP Konfiguration aus der Umgebungsvariablen
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+
 if not TOKEN:
     raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
+
+if use_email and not SMTP_PASSWORD:
+    raise ValueError("Das SMTP Passwort ist nicht gesetzt. Bitte die Umgebungsvariable 'SMTP_PASSWORD' definieren.")
 
 if not (isinstance(GROUP_ID, int) and GROUP_ID > 0):
     raise ValueError(f"GROUP_ID in der Datei config.py muss eine positive ganze Zahl sein. Gefunden: {GROUP_ID}")
@@ -185,9 +197,36 @@ def post_to_group(message):
     # Raise an exception if the request fails
     response.raise_for_status()
 
+def send_email(message):
+    # Send the email with the report
+    # Create the container (outer) email message.
+    msg = MIMEText("""*** Dies ist eine automatisch generierte Nachricht. ***\n\n
+Hallo,\n\nHier ist der Status der erweiterten Führungszeugnisse:\n\n
+""" + message + """
+Wenn Du diese Nachricht nicht mehr erhalten möchtest, sag mir bitte Bescheid.\n\n
+Viele Grüße,\nFrank""")
+    msg['Subject'] = 'Status der erweiterten Führungszeugnisse'
+    msg['From'] = smtp_username
+    msg['To'] = email_recipients
+
+    # Send the email
+    try:
+        # Connect to the SMTP server
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()  # Upgrade the connection to secure
+            server.login(smtp_username, SMTP_PASSWORD)  # Log in to the SMTP server
+            server.sendmail(msg['From'], msg['To'].split(', '), msg.as_string())  # Send the email
+            print("Email sent successfully!")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
 def main():
     delete_previous_posts()
-    post_to_group(get_users())
+    text = get_users()
+    post_to_group(text)
+    if use_email:
+        # Send the email with the report
+        send_email(text)
 
 if __name__ == "__main__":
     main()
