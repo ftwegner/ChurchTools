@@ -66,16 +66,14 @@ def get_users():
     # Setze die Locale auf Deutsch, damit der ausgeschriebene Monatsname in den Datumsangaben auf Deutsch ist
     locale.setlocale(locale.LC_TIME, "de_DE")
 
-    # Das DatumIm Feld ef_datum (Erstellung des erweiterten Führungszeugnisses) ein Datum eingetragen ist
-
     # Prüfe alle Benutzer
     for user in users:
-        # Wird ein erweitertes Führungszeuignis benötigt?
-        # Dazu muss der Wert in ef_benoetigt ("Benötigt ein erweitertes Führungszeugnis") auf True stehen
+        # Wird ein erweitertes Führungszeugnis benötigt?
+        # Dazu muss der Wert in ef_benoetigt ("Benötigt ein erweitertes Führungszeugnis") True sein
         if user.get(needs_ef_col):
             # Ja, es wird ein Führungszeugnis benötigt
 
-            # Prüpfe, ob ein Führungszeugnis vorhanden ist. 
+            # Prüfe, ob ein Führungszeugnis vorhanden ist. 
             # D.h. ob in dem Feld ef_datum (Erstellung des erweiterten Führungszeugnisses) ein Datum eingetragen ist
             ef_datum = str(user.get(ef_date_col))
             if ef_datum == "None":
@@ -84,32 +82,67 @@ def get_users():
                 ef_fehlt += f"- {user.get('firstName')} {user.get('lastName')}\n"
             else:
                 # Es gibt ein Führungszeugnis mit einem Erstellungsdatum
-                # Wir prüfen, ob es nich gültig ist oder bald ungültig wird
+                # Wir prüfen, ob es noch gültig ist oder bald ungültig wird
 
+                # ef_date ist ein String Objekt mit dem Datum der erstellung des Führungszeugnisses
                 ef_date = datetime.strptime(ef_datum, "%Y-%m-%d")
+
+                # ef_date ist ein datetime Objekt mit dem Datum der erstellung des Führungszeugnisses
                 ef_datum = ef_date.strftime("%#d. %B %Y")
+
+                # ef_expiry ist ein datetime Objekt mit dem Ablaufdatum des Führungszeugnisses
                 ef_expiry = ef_date + relativedelta(years=ef_valid_years)
+
+                # ef_expiry ist ein String Objekt mit dem Ablaufdatum des Führungszeugnisses
                 ef_ablauf = ef_expiry.strftime("%#d. %B %Y")
+
+                # ef_warn ist ein datetime Objekt mit dem Datum, ab dem vor dem Ablauf des Führungszeugnisses gewarnt wird
                 ef_warn = ef_expiry - relativedelta(months=ef_warn_months)
+
+                # Ist das Fphrungszeugnis abgelaufen?
                 if ef_expiry < datetime.now():
+                    # Ja, das Führungszeugnis ist abgelaufen
+                    # Füge den Benutzer zur Liste ef_abgelaufen hinzu
                     ef_abgelaufen += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist am {ef_ablauf} abgelaufen.\n"
+
                 elif ef_warn < datetime.now():
+                    # Das Führungszeugnis läuft bald ab
+                    # Füge den Benutzer zur Liste ef_alt hinzu
                     ef_alt += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} läuft am {ef_ablauf} ab.\n"
+
                 else:
+                    # Das Führungszeugnis ist noch lage genug gültig
                     ef_ok += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist bis zum {ef_ablauf} gültig.\n"
 
+    # Zeige einen Abschnitt nur ann, wenn dafür Benutzer vorhanden sind
+
     if len(ef_fehlt) > 0:
+        # Wenn vorhanden, füge die Liste der Benutzer, für die ein Führungszeugnis fehlt, zum Gesamtbericht hinzu
         user_data += ef_fehlt_head + ef_fehlt + "\n"
+
     if len(ef_abgelaufen) > 0:
+        # Wenn vorhanden, füge die Liste der Benutzer, deren Führungszeugnis abgelaufen ist, zum Gesamtbericht hinzu
         user_data += ef_abgelaufen_head + ef_abgelaufen + "\n"
+
     if len(ef_alt) > 0:
+        # Wenn vorhanden, füge die Liste der Benutzer, deren Führungszeugnis bald abläuft, zum Gesamtbericht hinzu
         user_data += ef_alt_head + ef_alt + "\n"
+
     if len(ef_ok) > 0:
+        # Wenn vorhanden, füge die Liste der Benutzer, deren Führungszeugnis noch gültig ist, zum Gesamtbericht hinzu
         user_data += ef_ok_head + ef_ok + "\n"
+
+    if len(user_data) == 0:
+        # Wenn keine Benutzer vorhanden sind, die ein Führungszeugnis benötigen, gebe eine entsprechende Nachricht zurück
+        user_data = "Es sind keine Benutzer gefunden worden, die ein erweitertes Führungszeugnis benötigen.\n"
+
+    # Liefere den Gesamtbericht zurück
     return user_data
 
 def delete_previous_posts():
-    # Get previous post
+    # Lösche alle vorherigen Posts mit dem Titel "Status der erweiterten Führungszeugnisse"
+
+    # Dazu werden zunächst alle Posts mit dem Titel "Status der erweiterten Führungszeugnisse" in der Gruppe mit GROUP_ID abgerufen
     headers = {
         "Authorization": f"Login {TOKEN}",
         "accept": "application/json"
@@ -126,7 +159,8 @@ def delete_previous_posts():
             continue
     
 def post_to_group(message):
-    # Example:  "expirationDate": "2029-10-19T12:00:00Z",
+    # Post the message to the group with GROUP_ID
+    # Example expiry date:  "expirationDate": "2029-10-19T12:00:00Z",
     text = {
   "content": message,
   "title": "Status der erweiterten Führungszeugnisse",
@@ -146,10 +180,8 @@ def post_to_group(message):
     response.raise_for_status()
 
 def main():
-    # Fetch users and their custom field data
     delete_previous_posts()
     post_to_group(get_users())
-    #print(get_users())
 
 if __name__ == "__main__":
     main()
