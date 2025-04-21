@@ -147,21 +147,16 @@ Das Repository ist jetzt auf deinem Rechner verfügbar. Du kannst es in <a href=
 <h2 id="konfiguration">Konfiguration</h2>
 <p>Die Konfiguration besteht aus zwei Teilen:</p>
 <ol>
-<li>Access Token</li>
-<li>API Base URL</li>
+<li>Access Token holen</li>
+<li>Umgebungsvariable <code>CHURCHTOOLS_TOKEN</code> setzen</li>
+<li>API Base URL setzen</li>
 </ol>
 <h3 id="1-access-token">1. Access Token</h3>
 <p>Damit die ChurchTools Utilities funktioneren, muss auf dem Rechner, auf dem die Utilities laufen, die Umgebungsvariable <code>CHURCHTOOLS_TOKEN</code> mit dem ChurchTools Access Token angelegt sein.</p>
 <h4 id="churchtools-access-token-besorgen">ChurchTools Access Token besorgen</h4>
 <p>In ChurchTools Web bekommst du das Token in <code>Personen &amp; Gruppen &gt; Personenliste &gt; „Person A“ &gt; Berechtigungen &gt; Login-Token</code></p>
-<h4 id="nachste-schritte">Nächste Schritte</h4>
-<ol>
-<li>Führe die Konfiguration der einzelen Funktionen durch:</li>
-<li><a href="erweiterte-fuehrungszeugnisse/">Erweiterte Führungszeugnisse</a></li>
-<li>Gib mir Feedback.</li>
-</ol>
-<h4 id="weitere-informationen">Weitere Informationen</h4>
-<h5 id="umgebungsvariable-setzen">Umgebungsvariable setzen</h5>
+<h3 id="2-umgebungsvariable-churchtools_token-setzen">2. Umgebungsvariable <code>CHURCHTOOLS_TOKEN</code> setzen</h3>
+<h4 id="windows">Windows</h4>
 <p>Um die Umgebungsvariable <code>CHURCHTOOLS_TOKEN</code> für den aktuellen Benutzer in Windows zu setzen, führe die folgenden Schritte aus:</p>
 <ol>
 <li><strong>Öffne die Umgebungsvariablen-Einstellungen</strong>:</li>
@@ -195,7 +190,7 @@ Führe in der PowerShell den folgenden Befehl aus, um zu überprüfen, ob die Um
 </ol>
 <pre><code class="language-powershell">echo $env:CHURCHTOOLS_TOKEN
 </code></pre>
-<p>Wenn der Token angezeigt wird, ist die Umgebungsvariable korrekt gesetzt. Du kannst jetzt dein Python-Skript ausführen. Wenn der Token angezeigt wird, ist die Umgebungsvariable korrekt gesetzt. Du kannst jetzt dein Python-Skript ausführen.</p>
+<h4 id="linux-und-raspberry-pi">Linux und Raspberry Pi</h4>
 <p>Um eine Umgebungsvariable permanent für einen Benutzer auf einem Linux System oder einem einem Raspberry Pi zu setzen, kannst du die <code>.bashrc</code>-Datei des Benutzers bearbeiten. Hier sind die Schritte:</p>
 <ol>
 <li><strong>Öffne die <code>.bashrc</code>-Datei und füge die Umgebungsvariable hinzu</strong>
@@ -220,7 +215,13 @@ Prüfe, ob die Umgebungsvariable korrekt gesetzt wurde:</li>
 <p>Setze die <code>BASE URL</code> in der Datei <code>config.py</code> auf den Wert für deine Kirchengemeinde:</p>
 <pre><code># Base URL der ChurchTools Instanz API
 BASE_URL = &quot;https://volksdorf.church.tools/api&quot;
-</code></pre></div>
+</code></pre>
+<h3 id="nachste-schritte">Nächste Schritte</h3>
+<ol>
+<li>Führe die Konfiguration der einzelen Funktionen durch:</li>
+<li><a href="erweiterte-fuehrungszeugnisse/">Erweiterte Führungszeugnisse</a></li>
+<li>Gib mir Feedback.</li>
+</ol></div>
             </div>
         </div>
 
@@ -302,5 +303,5 @@ BASE_URL = &quot;https://volksdorf.church.tools/api&quot;
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-04-21 09:06:30.346961+00:00
+Build Date UTC : 2025-04-21 09:16:11.064736+00:00
 -->

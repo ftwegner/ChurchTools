@@ -1,4 +1,3 @@
 .venv
-docs
 mkdocs.yml
 requirements-pip-freeze.txt
