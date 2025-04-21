@@ -153,7 +153,7 @@ def delete_previous_posts():
     for post in posts:
         if post.get("title") == "Status der erweiterten Führungszeugnisse":
             # Delete the previous post
-            response = requests.delete( f"{BASE_URL}/posts/{post.get("id")}", headers=headers)
+            response = requests.delete( f"{BASE_URL}/posts/{post.get('id')}", headers=headers)
             response.raise_for_status()
             # use "continue" in case we have multiple posts with the same title - to clean up any potential errors
             continue
