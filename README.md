@@ -6,7 +6,7 @@ Dieses Projekt enthält Python-Skripte, mit denen die Verwaltung von Vorgängen 
 1. **Erweiterte Führungszeugnisse** - Statusbericht und Warnung bei Ablauf.
 
 ## Dokumentation
-Die vollständige Dokumentation ist [hier verfügbar](https://ftwegner.github.io/ChurchTools).
+Die vollständige Dokumentation ist [hier verfügbar](https://ftwegner.github.io/ChurchTools/site/index.html).
 
 ## Autor
 - **Frank Wegner**
