@@ -3,29 +3,7 @@ import locale
 import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
-# ChurchTools Instanz spezifische Variablen, die angepasst werden müssen
-# ----------------------------------------------------------------------
-# Base URL der ChurchTools Instanz API
-BASE_URL = "https://volksdorf.church.tools/api"
-
-# ID der Gruppe (Merkmal) der Verantwortlichen für die Führungszeugnisse, in der die Posts veröffentlicht werden sollen
-GROUP_ID = 153
-
-# Name der Tabellenspalte, die anzeigt, dass ein Mitarbeiter ein erweitertes Führungszeugnis benötigt
-# Die ist ein Ja-Nein-Feld
-needs_ef_col = "ef_benoetigt"
-
-# Name der Tabellenspalte, die das Datum des Führungszeugnisses enthält 
-# Dies ist ein Datumsfeld
-ef_date_col = "ef_datum"
-
-# Wieviele Jahre ist ein erweitertes Führungszeugnis gültig
-ef_valid_years = 3
-
-# Wieviele Monate vor Ablauf eines erweiterten Führungszeugnisses soll gewarnt werden
-ef_warn_months = 3
-# -----------------------------------------------------------------------
+from config import BASE_URL, GROUP_ID, needs_ef_col, ef_date_col, ef_valid_years, ef_warn_months
 
 # Lese das Zugangstoken aus der Umgebungsvariablen
 TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
@@ -34,13 +12,13 @@ if not TOKEN:
     raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
 
 if not (isinstance(GROUP_ID, int) and GROUP_ID > 0):
-    raise ValueError(f"GROUP_ID muss eine positive ganze Zahl sein. Gefunden: {GROUP_ID}")
+    raise ValueError(f"GROUP_ID in der Datei config.py muss eine positive ganze Zahl sein. Gefunden: {GROUP_ID}")
 
 if not (isinstance(ef_valid_years, int) and ef_valid_years > 0):
-    raise ValueError(f"Die Anzahl der Jahre (ef_valid_years) muss eine positive ganze Zahl sein. Gefunden: {ef_valid_years}")
+    raise ValueError(f"Die Anzahl der Jahre (ef_valid_years) in der Datei config.py muss eine positive ganze Zahl sein. Gefunden: {ef_valid_years}")
 
 if not (isinstance(ef_warn_months, int) and ef_warn_months > 0):
-    raise ValueError(f"Die Anzahl der Monate (ef_warn_months) muss eine positive ganze Zahl sein. Gefunden: {ef_warn_months}")
+    raise ValueError(f"Die Anzahl der Monate (ef_warn_months) in der Datei config.py muss eine positive ganze Zahl sein. Gefunden: {ef_warn_months}")
 
 def get_users():
     # Finde alle Benutzer, bei denen ein erweitertes Führundgzeugnis benötigt wird
