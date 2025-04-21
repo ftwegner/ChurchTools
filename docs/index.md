@@ -101,7 +101,7 @@ echo $CHURCHTOOLS_TOKEN
 
 Wenn der Token angezeigt wird, ist die Umgebungsvariable korrekt gesetzt.
 
-### 2. API Base URL
+### 3. API Base URL
 Setze die `BASE URL` in der Datei `config.py` auf den Wert für deine Kirchengemeinde:
 ```
 # Base URL der ChurchTools Instanz API
