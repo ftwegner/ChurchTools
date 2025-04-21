@@ -66,5 +66,13 @@ ef_valid_years = 3
 
 # Wieviele Monate vor Ablauf eines Führungszeugnisses soll gewarnt werden
 ef_warn_months = 3
+
+# SMTP Server Konfiguration für den Web.de Emaildienst
+# Du kannst den Server und Port bei Bedarf für andere Dienste anpassen
+use_email = True  # Wenn True wird eine Email gesendet
+smtp_server = 'smtp.web.de'
+smtp_port = 587  # Nutze 587 für TLS
+smtp_username = 'frank.wegner@web.de' # Das assword ist in der Umgebungsvariablen SMTP_PASSWORD
+email_recipients = 'frank.wegner@web.de' # Komma-separierte Liste der Empfänger
 # -----------------------------------------------------------------------
 ```
