@@ -1,9 +1,15 @@
 import requests
 import locale
 import os
+import sys
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from config import BASE_URL, GROUP_ID, needs_ef_col, ef_date_col, ef_valid_years, ef_warn_months
+
+# Prüfe, ob mindestens Python 3.6 installiert ist
+# Diese Version ist notwendig, um die Datetime- und Dateutil-Bibliotheken und f-Strings zu verwenden.
+if sys.version_info < (3, 6):
+    raise Exception("Dieses Skript benötigt Python 3.6 oder höher.")
 
 # Lese das Zugangstoken aus der Umgebungsvariablen
 TOKEN = os.getenv("CHURCHTOOLS_TOKEN")
