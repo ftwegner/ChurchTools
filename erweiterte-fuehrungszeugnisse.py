@@ -82,7 +82,7 @@ def get_users():
     user_data = ""
 
     # Setze die Locale auf Deutsch, damit der ausgeschriebene Monatsname in den Datumsangaben auf Deutsch ist
-    locale.setlocale(locale.LC_TIME, "de_DE")
+    locale.setlocale(locale.LC_TIME, "de_DE.utf8")
 
     # Prüfe alle Benutzer
     for user in users:

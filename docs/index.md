@@ -83,16 +83,16 @@ echo $env:CHURCHTOOLS_TOKEN
 #### Linux und Raspberry Pi
 Um eine Umgebungsvariable permanent für einen Benutzer auf einem Linux System oder einem einem Raspberry Pi zu setzen, kannst du die `.bashrc`-Datei des Benutzers bearbeiten. Hier sind die Schritte:
 
-1. **Öffne die `.bashrc`-Datei und füge die Umgebungsvariable hinzu**
+1. **Öffne die `.profile`-Datei und füge die Umgebungsvariable hinzu**
 Füge am Ende der Datei die folgende Zeile hinzu und speichere die Datei:
 ```bash
 export CHURCHTOOLS_TOKEN="<token value here>"
 ```
 
 2. **Aktualisiere die Umgebungsvariablen**
-Lade die `.bashrc`-Datei neu, damit die Änderungen wirksam werden:
+Lade die `.profile`-Datei neu, damit die Änderungen wirksam werden:
 ```bash
-source ~/.bashrc
+source ~/.profile
 ```
 
 3. **Überprüfe die Umgebungsvariable**
