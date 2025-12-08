@@ -45,6 +45,13 @@ def get_services():
     }
     response = requests.get(f"{BASE_URL}/events", headers=headers)
     # https://volksdorf.church.tools/api/calendars/2/appointments
+    # https://volksdorf.church.tools/api/bookings?resource_ids[]=5&resource_ids[]=3&from=2026-01-01
+    # params = {
+    #     "resource_ids[]": [5, 7, 12],
+    #     "from": "2026-01-01",
+    # }
+    # r = requests.get(f"{BASE_URL}/bookings", headers=headers, params=params)
+
     response.raise_for_status()
     events = response.json().get("data", [])
     pagination = response.json().get("meta").get("pagination")
