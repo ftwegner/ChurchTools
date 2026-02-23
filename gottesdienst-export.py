@@ -3,10 +3,9 @@ import locale
 import os
 import sys
 import calendar
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-from config import BASE_URL, GROUP_ID, needs_ef_col, ef_date_col, use_email, smtp_server, smtp_port, smtp_username, email_recipients
-#use_email = False
+from datetime import date, timedelta, datetime
+from config import BASE_URL, use_email, smtp_server, smtp_port, smtp_username, email_recipients
+use_email = False
 
 if use_email:
     # Import smtplib for the actual sending function
@@ -59,7 +58,9 @@ parameters = [
         "pastores_service_id" : 1
     }
 ]
-TO = "2026-12-31"
+FROM = date.today().strftime("%Y-%m-%d")
+one_year_from_today = date.today() + timedelta(days=365)
+TO = one_year_from_today.strftime("%Y-%m-%d")
 
 def get_services():
     services = "'Gemeinde','Standort','Datum (Sortierung)','Datum','Beginn','Ende','Name',\
@@ -96,7 +97,7 @@ def get_services():
         params = {
             # Kalender ID 2 ist der Gottesdienste Kalender, wir nehmen nur Events aus diesem Kalender
             "calendar_ids[]": CALENDAR_IDS,
-            "from": "2026-01-01",
+            "from": FROM,
             # Das "to" Feld ist nötig, weil sonst nur Events des aktuellen Monats geladen werden
             "to": TO,
             # Lade auch Details zu Diensten wie Musik und Pastor*in
@@ -119,7 +120,7 @@ def get_services():
         # Lade alle Einträge aus dem Gottesdienste Kalender
         # -> appointments
         params = {
-            "from": "2026-01-01",
+            "from": FROM,
             # Das "to" Feld ist nötig, weil sonst nur Termine des aktuellen Monats geladen werden
             "to": TO,
         }
@@ -140,7 +141,7 @@ def get_services():
         params = {
             # Gottesdienst Räume
             "resource_ids[]": RESOURCE_IDS,
-            "from": "2026-01-01",
+            "from": FROM,
             # Das "to" Feld ist nötig, weil sonst nur Buchungen des aktuellen Monats geladen werden
             "to": TO,
         }
