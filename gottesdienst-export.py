@@ -49,21 +49,25 @@ parameters = [
         "pastores_service_id" : 3
     },
     {
-        "name" : "Oberalster/Bergstedt",
+        "name" : "Oberalster Bergstedt",
         "id" : "OAB",
-        "calendar_ids" : [35,38,41],
+        "calendar_ids" : [35, 38, 41],
         "calender_title" : "Gottesdienst",
         "url_name" : "oberalster-bergstedt",
-        "resource_ids" : [8,11,15,20,28,29,30,33,34,39,42],
-        "musik_service_id" : 2,
-        "pastores_service_id" : 3
+        "resource_ids" : [8, 11, 12, 15, 19, 20, 28, 29, 30, 32, 33, 34, 39, 41, 42],
+        "musik_service_id" : 10,
+        "pastores_service_id" : 1
     }
 ]
-TO = "2026-03-31"
+TO = "2026-12-31"
 
 def get_services():
-    services = "Gemeinde,Standort,Datum (Sortierung),Datum,Beginn,Ende,Name,Dienstplan_Notiz,\
-Kalender_Untertitel,Kalender_Beschreibung,Raum,Pastor*in,Organist*in\n"
+    services = "'Gemeinde','Standort','Datum (Sortierung)','Datum','Beginn','Ende','Name',\
+'Dienstplan_Notiz','Kalender_Untertitel','Kalender_Beschreibung','Raum','Pastor*in','Organist*in'\n\
+'ChurchTools Instanz','event.calendar.domainAttributes.campusName','event.startDate',\
+'event.startDate','event.startDate','event.endDate','event.name','event.note',\
+'appointment.base.subtitle','appointment.base.description','booking.base.resource.name',\
+'event.eventServices.name','event.eventServices.name'\n"
     for param in parameters:
         ID = param.get("id")
         NAME = param.get("name")
@@ -194,15 +198,15 @@ Kalender_Untertitel,Kalender_Beschreibung,Raum,Pastor*in,Organist*in\n"
                     description = ab.get('description')
                     if not description:
                         description = '(keine Beschreibung)'
-                    a_text = f"'{subtitle}','{description}',"
+                    a_text = f"'{subtitle.replace("'", "")}','{description.replace("'", "")}',"
                 else:
                     a_text = "'(Kein Kalendereintrag)','',"    
                 booking = next((b for b in bookings if b.get("base").get("appointmentId") == appointment_id), None)
                 if booking:
                     bb = booking.get('base')
-                    b_text = f"'{bb.get('resource').get('name')}'"
+                    b_text = f"{bb.get('resource').get('name')}"
                 else:
-                    b_text = "'(Keine Raumbuchung)'"
+                    b_text = "(Keine Raumbuchung)"
                 note = event.get('note')
                 if not note:
                     note = '(keine Dienstplan-Notiz)'
@@ -210,14 +214,14 @@ Kalender_Untertitel,Kalender_Beschreibung,Raum,Pastor*in,Organist*in\n"
                     pastores.append('(keine Pastor*in)')
                 if not musik:
                     musik.append('(kein Organist*in)')
-                services += f"'{NAME}',\
-'{location}',\
+                services += f"'{NAME.replace("'", "")}',\
+'{location.replace("'", "")}',\
 '{event_start_date}',\
 '{calendar.day_name[event_start_date.weekday()]}, den {event_start_date.strftime('%d.%m.%Y')}',\
 '{event_start_date.strftime('%H:%M')}',\
-'{event_end_date.strftime('%H:%M')}','{event.get('name')}',\
-'{note}',\
-{a_text}{b_text},'{" | ".join(pastores)}','{" | ".join(musik)}'\n"
+'{event_end_date.strftime('%H:%M')}','{event.get('name').replace("'", "")}',\
+'{note.replace("'", "")}',\
+{a_text}'{b_text.replace("'", "")}','{" | ".join(pastores)}','{" | ".join(musik)}'\n"
 
     return services
 
