@@ -4,8 +4,12 @@ import os
 import sys
 import calendar
 from datetime import date, timedelta, datetime
+from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.cell.rich_text import CellRichText, TextBlock, InlineFont
 from config import BASE_URL, use_email, smtp_server, smtp_port, smtp_username, email_recipients
-use_email = False
+#use_email = False
 
 if use_email:
     # Import smtplib for the actual sending function
@@ -62,13 +66,13 @@ FROM = date.today().strftime("%Y-%m-%d")
 one_year_from_today = date.today() + timedelta(days=365)
 TO = one_year_from_today.strftime("%Y-%m-%d")
 
-def get_services():
-    services = "'Gemeinde','Standort','Datum (Sortierung)','Datum','Beginn','Ende','Name',\
-'Dienstplan_Notiz','Kalender_Untertitel','Kalender_Beschreibung','Raum','Pastor*in','Organist*in'\n\
-'ChurchTools Instanz','event.calendar.domainAttributes.campusName','event.startDate',\
-'event.startDate','event.startDate','event.endDate','event.name','event.note',\
-'appointment.base.subtitle','appointment.base.description','booking.base.resource.name',\
-'event.eventServices.name','event.eventServices.name'\n"
+def get_services(from_date=None, to_date=None):
+    _from = from_date if from_date else FROM
+    _to   = to_date   if to_date   else TO
+    rows = [
+        ['Gemeinde', 'Standort', 'Datum (Sortierung)', 'Datum', 'Beginn', 'Ende', 'Name',
+         'Dienstplan_Notiz', 'Kalender_Untertitel', 'Kalender_Beschreibung', 'Raum', 'Pastor*in', 'Organist*in'],
+    ]
     for param in parameters:
         ID = param.get("id")
         NAME = param.get("name")
@@ -97,9 +101,9 @@ def get_services():
         params = {
             # Kalender ID 2 ist der Gottesdienste Kalender, wir nehmen nur Events aus diesem Kalender
             "calendar_ids[]": CALENDAR_IDS,
-            "from": FROM,
+            "from": _from,
             # Das "to" Feld ist nötig, weil sonst nur Events des aktuellen Monats geladen werden
-            "to": TO,
+            "to": _to,
             # Lade auch Details zu Diensten wie Musik und Pastor*in
             "include": "eventServices",
             # Keine abgesagten Events
@@ -120,9 +124,9 @@ def get_services():
         # Lade alle Einträge aus dem Gottesdienste Kalender
         # -> appointments
         params = {
-            "from": FROM,
+            "from": _from,
             # Das "to" Feld ist nötig, weil sonst nur Termine des aktuellen Monats geladen werden
-            "to": TO,
+            "to": _to,
         }
         # Gottesdienste Kalender hat die ID 2 für Volksdorf
         appointments_response = requests.get(f"{BASE_URL}/calendars/{CALENDAR_IDS[0]}/appointments", headers=headers, params=params)    
@@ -141,9 +145,9 @@ def get_services():
         params = {
             # Gottesdienst Räume
             "resource_ids[]": RESOURCE_IDS,
-            "from": FROM,
+            "from": _from,
             # Das "to" Feld ist nötig, weil sonst nur Buchungen des aktuellen Monats geladen werden
-            "to": TO,
+            "to": _to,
         }
         bookings_response = requests.get(f"{BASE_URL}/bookings", headers=headers, params=params)
 
@@ -193,19 +197,14 @@ def get_services():
                 appointment = next((a for a in appointments if a.get("base").get("id") == appointment_id), None)
                 if appointment:
                     ab = appointment.get('base')
-                    subtitle = ab.get('subtitle')
-                    if not subtitle:
-                        subtitle = '(kein Untertitel)'
-                    description = ab.get('description')
-                    if not description:
-                        description = '(keine Beschreibung)'
-                    a_text = f"'{subtitle.replace("'", "")}','{description.replace("'", "")}',"
+                    subtitle = ab.get('subtitle') or '(kein Untertitel)'
+                    description = ab.get('description') or '(keine Beschreibung)'
                 else:
-                    a_text = "'(Kein Kalendereintrag)','',"    
+                    subtitle = '(Kein Kalendereintrag)'
+                    description = ''
                 booking = next((b for b in bookings if b.get("base").get("appointmentId") == appointment_id), None)
                 if booking:
-                    bb = booking.get('base')
-                    b_text = f"{bb.get('resource').get('name')}"
+                    b_text = booking.get('base').get('resource').get('name')
                 else:
                     b_text = "(Keine Raumbuchung)"
                 note = event.get('note')
@@ -215,18 +214,158 @@ def get_services():
                     pastores.append('(keine Pastor*in)')
                 if not musik:
                     musik.append('(kein Organist*in)')
-                services += f"'{NAME.replace("'", "")}',\
-'{location.replace("'", "")}',\
-'{event_start_date}',\
-'{calendar.day_name[event_start_date.weekday()]}, den {event_start_date.strftime('%d.%m.%Y')}',\
-'{event_start_date.strftime('%H:%M')}',\
-'{event_end_date.strftime('%H:%M')}','{event.get('name').replace("'", "")}',\
-'{note.replace("'", "")}',\
-{a_text}'{b_text.replace("'", "")}','{" | ".join(pastores)}','{" | ".join(musik)}'\n"
+                rows.append([
+                    NAME,
+                    location,
+                    event_start_date.replace(tzinfo=None),
+                    f"{calendar.day_name[event_start_date.weekday()]}, den {event_start_date.strftime('%d.%m.%Y')}",
+                    event_start_date.strftime('%H:%M'),
+                    event_end_date.strftime('%H:%M'),
+                    event.get('name'),
+                    note,
+                    subtitle,
+                    description,
+                    b_text,
+                    " | ".join(pastores),
+                    " | ".join(musik),
+                ])
 
-    return services
+    # Kirchenjahr – calendar ID 14, Volksdorf only
+    kirchenjahr_rows = []
+    vol_param = next((p for p in parameters if p.get("id") == "VOL"), None)
+    TOKEN_VOL = os.getenv("CHURCHTOOLS_TOKEN_VOL")
+    if vol_param and TOKEN_VOL:
+        BASE_URL_VOL = f"https://{vol_param.get('url_name')}.church.tools/api"
+        headers = {"Authorization": f"Login {TOKEN_VOL}"}
+        params = {"from": _from, "to": _to}
+        kj_response = requests.get(f"{BASE_URL_VOL}/calendars/14/appointments", headers=headers, params=params)
+        kj_response.raise_for_status()
+        kj_appointments = kj_response.json().get("data", [])
+        pagination = kj_response.json().get("meta", {}).get("pagination")
+        if pagination:
+            pages = pagination.get("lastPage")
+            for page in range(2, pages + 1):
+                kj_response = requests.get(f"{BASE_URL_VOL}/calendars/14/appointments?page={page}", headers=headers, params=params)
+                kj_response.raise_for_status()
+                kj_appointments.extend(kj_response.json().get("data", []))
+        print(f"{len(kj_appointments)} Kirchenjahr-Einträge gefunden.")
+        for appt in sorted(kj_appointments, key=lambda a: a.get("base", {}).get("startDate", "")):
+            base = appt.get("base", {})
+            start_date = base.get("startDate")
+            caption = base.get("caption", "")
+            if start_date:
+                kirchenjahr_rows.append([datetime.fromisoformat(start_date).replace(tzinfo=None), caption])
 
-def send_email(services):
+    return rows, kirchenjahr_rows
+
+ARIAL = Font(name="Arial")
+ARIAL_BOLD = Font(name="Arial", bold=True)
+ARIAL_BOLD_LARGE = Font(name="Arial", bold=True, size=12)
+LIGHT_BLUE_FILL = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+_THIN = Side(style='thin')
+SERVICE_ROW_BORDER = Border(top=_THIN, bottom=_THIN)
+_CHARS_PER_LINE_C = 60   # approx characters per line in col C at 11 cm, Arial 11pt
+_LINE_HEIGHT_PT   = 14   # Excel line height for Arial 11pt
+_ROW_PADDING_PT   = 12   # 6pt top + 6pt bottom
+
+def _build_gemeindebrief_sheet(wb, sheet_title, sorted_data, highlight_gemeinde, kirchenjahr_by_date):
+    # Columns in data rows:
+    #  0=Gemeinde, 1=Standort, 2=Datum(sort), 3=Datum(text), 4=Beginn,
+    #  5=Ende, 6=Name, 7=Notiz, 8=Untertitel, 9=Beschreibung,
+    #  10=Raum, 11=Pastor*in, 12=Organist*in
+    ws = wb.create_sheet(title=sheet_title)
+    current_date = None
+    row_idx = 1
+    for service in sorted_data:
+        dt = service[2]  # datetime object
+        date_key = dt.date()
+        if date_key != current_date:
+            current_date = date_key
+            kj_title = kirchenjahr_by_date.get(date_key)
+            bracket_text = kj_title if kj_title else calendar.day_name[dt.weekday()]
+            date_heading = f"{dt.strftime('%d.%m.%Y')} ({bracket_text})"
+            cell = ws.cell(row=row_idx, column=1, value=date_heading)
+            cell.font = ARIAL_BOLD_LARGE
+            ws.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=3)
+            ws.row_dimensions[row_idx].height = 30  # double the default (~15pt)
+            row_idx += 1
+            ws.row_dimensions[row_idx].height = 6   # 6pt spacer below date heading
+            row_idx += 1
+        name       = service[6] or ''
+        untertitel = service[8] or ''
+        pastor     = service[11] or ''
+        organist   = service[12] or ''
+        desc_parts = [name]
+        if untertitel not in ('(kein Untertitel)', '(Kein Kalendereintrag)'):
+            desc_parts.append(untertitel)
+        if pastor != '(keine Pastor*in)':
+            desc_parts.append(f"P: {pastor}")
+        if organist != '(kein Organist*in)':
+            desc_parts.append(f"Musik: {organist}")
+        description = ' - '.join(desc_parts)
+        fill = LIGHT_BLUE_FILL if service[0] == highlight_gemeinde else None
+        # Build column B: standort bold; for Volksdorf append cleaned room in normal weight
+        standort = service[1]
+        raum = service[10]
+        if service[0] == "Volksdorf" and raum != "(Keine Raumbuchung)":
+            raum_clean = raum.replace("Kirche ", "").strip()
+            if raum_clean:
+                col_b = CellRichText([
+                    TextBlock(InlineFont(b=True,  rFont="Arial"), standort),
+                    TextBlock(InlineFont(b=False, rFont="Arial"), f" ({raum_clean})"),
+                ])
+            else:
+                col_b = CellRichText([TextBlock(InlineFont(b=True, rFont="Arial"), standort)])
+        else:
+            col_b = CellRichText([TextBlock(InlineFont(b=True, rFont="Arial"), standort)])
+        for col, value in enumerate([service[4], col_b, description], start=1):
+            c = ws.cell(row=row_idx, column=col, value=value)
+            if col != 2:
+                c.font = ARIAL  # col 2 font is embedded in CellRichText runs
+            c.alignment = Alignment(vertical='center', wrap_text=(col >= 2))
+            c.border = SERVICE_ROW_BORDER
+            if fill:
+                c.fill = fill
+        n_lines = max(1, -(-len(description) // _CHARS_PER_LINE_C))
+        ws.row_dimensions[row_idx].height = n_lines * _LINE_HEIGHT_PT + _ROW_PADDING_PT
+        row_idx += 1
+    # Column A: fixed width just for "00:00"
+    ws.column_dimensions['A'].width = 7
+    # Column B: 5 cm (≈ 25 Excel character units)
+    ws.column_dimensions['B'].width = 25
+    # Column C: 11 cm (≈ 55 Excel character units)
+    ws.column_dimensions['C'].width = 55
+
+def create_excel(rows, kirchenjahr_rows):
+    wb = openpyxl.Workbook()
+
+    # Sheet 1: Gottesdienste (full data)
+    ws1 = wb.active
+    ws1.title = "Gottesdienste"
+    for i, row in enumerate(rows):
+        ws1.append(row)
+        if i == 0:
+            for cell in ws1[1]:
+                cell.font = ARIAL_BOLD
+        else:
+            for cell in ws1[i + 1]:
+                cell.font = ARIAL
+
+    # Sheets 2–4: Gemeindebrief per Gemeinde
+    sorted_data = sorted(rows[1:], key=lambda r: r[2])  # sort by datetime (skip 1 header row)
+    kirchenjahr_by_date = {dt.date(): caption for dt, caption in kirchenjahr_rows}
+    _build_gemeindebrief_sheet(wb, "Gemeindebrief - Volksdorf",             sorted_data, "Volksdorf",            kirchenjahr_by_date)
+    _build_gemeindebrief_sheet(wb, "Gemeindebrief - Duvenstedt",            sorted_data, "Duvenstedt",           kirchenjahr_by_date)
+    _build_gemeindebrief_sheet(wb, "Gemeindebrief - OA-Bergstedt",          sorted_data, "Oberalster Bergstedt", kirchenjahr_by_date)
+
+    # Move Gottesdienste sheet to the far right
+    wb.move_sheet("Gottesdienste", offset=len(wb.sheetnames) - 1)
+
+    output = BytesIO()
+    wb.save(output)
+    return output.getvalue()
+
+def send_email(rows, kirchenjahr_rows):
     # Send the email with the report
     # Create the container (outer) email message.
     # msg = MIMEMultipart()
@@ -236,8 +375,8 @@ def send_email(services):
     msg['To'] = email_recipients
     msg.set_content("""*** Dies ist eine automatisch generierte Nachricht. ***\n\n
 Hallo,\n\nIm Anhang ist die Liste der Gottesdienste.\n\nViele Grüße,\nFrank""")
-    services_bytes = services.encode('utf-8')
-    msg.add_attachment(services_bytes, maintype='text', subtype='csv', filename='Gottesdienste.csv')
+    excel_bytes = create_excel(rows, kirchenjahr_rows)
+    msg.add_attachment(excel_bytes, maintype='application', subtype='vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename='Gottesdienste.xlsx')
     # Send the email
     try:
         # Connect to the SMTP server
@@ -250,11 +389,15 @@ Hallo,\n\nIm Anhang ist die Liste der Gottesdienste.\n\nViele Grüße,\nFrank"""
         print(f"Failed to send email: {e}")
 
 def main():
-    services = get_services()
-    print(services)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--from", dest="from_date", default=None, help="Start date YYYY-MM-DD")
+    parser.add_argument("--to",   dest="to_date",   default=None, help="End date YYYY-MM-DD")
+    args = parser.parse_args()
+    rows, kirchenjahr_rows = get_services(from_date=args.from_date, to_date=args.to_date)
+    print(f"{len(rows) - 1} Gottesdienste gefunden.")
     if use_email:
-        # Send the email with the report
-        send_email(services)
+        send_email(rows, kirchenjahr_rows)
 
 if __name__ == "__main__":
     main()
