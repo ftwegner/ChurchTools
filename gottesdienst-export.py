@@ -4,6 +4,7 @@ import os
 import sys
 import calendar
 from datetime import date, timedelta, datetime
+from zoneinfo import ZoneInfo
 from io import BytesIO
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -183,8 +184,8 @@ def get_services(from_date=None, to_date=None):
                 else:
                     location = "(kein Standort)"
                 eventServices = event.get("eventServices", [])
-                event_start_date = datetime.fromisoformat(event.get("startDate"))
-                event_end_date = datetime.fromisoformat(event.get("endDate"))
+                event_start_date = datetime.fromisoformat(event.get("startDate")).astimezone(_BERLIN)
+                event_end_date = datetime.fromisoformat(event.get("endDate")).astimezone(_BERLIN)
                 pastores = []
                 musik = []
                 for service in eventServices:
@@ -254,14 +255,16 @@ def get_services(from_date=None, to_date=None):
             start_date = base.get("startDate")
             caption = base.get("caption", "")
             if start_date:
-                kirchenjahr_rows.append([datetime.fromisoformat(start_date).replace(tzinfo=None), caption])
+                kirchenjahr_rows.append([datetime.fromisoformat(start_date).astimezone(_BERLIN).replace(tzinfo=None), caption])
 
     return rows, kirchenjahr_rows
+
+_BERLIN = ZoneInfo("Europe/Berlin")
 
 ARIAL = Font(name="Arial")
 ARIAL_BOLD = Font(name="Arial", bold=True)
 ARIAL_BOLD_LARGE = Font(name="Arial", bold=True, size=12)
-LIGHT_BLUE_FILL = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+LIGHT_BLUE_FILL = PatternFill(start_color="DAEAF6", end_color="DAEAF6", fill_type="solid")
 _THIN = Side(style='thin')
 SERVICE_ROW_BORDER = Border(top=_THIN, bottom=_THIN)
 _CHARS_PER_LINE_C = 60   # approx characters per line in col C at 11 cm, Arial 11pt
@@ -274,6 +277,7 @@ def _build_gemeindebrief_sheet(wb, sheet_title, sorted_data, highlight_gemeinde,
     #  5=Ende, 6=Name, 7=Notiz, 8=Untertitel, 9=Beschreibung,
     #  10=Raum, 11=Pastor*in, 12=Organist*in
     ws = wb.create_sheet(title=sheet_title)
+    ws.sheet_view.showGridLines = False
     current_date = None
     row_idx = 1
     for service in sorted_data:
