@@ -60,102 +60,107 @@ def get_users():
 
     # Initialisiere die Variablen
 
-    # Die Überschrift für die verschiedenen Statuswerte:
-    ef_fehlt_head = "Ein erweitertes Führungszeugnis fehlt für:\n"
-    ef_abgelaufen_head = "Das erweiterte Führungszeugnis ist nicht mehr gültig für:\n"
-
+    # Überschriften für die Abschnitte
     if ef_warn_months == 1:
         months_text = "einem Monat"
     else:
         months_text = f"{ef_warn_months} Monaten"
 
-    ef_alt_head = f"Das erweiterte Führungszeugnis wird innerhalb von {months_text} ungültig für:\n"
-    ef_ok_head = "Das erweiterte Führungszeugnis ist ok für:\n"
+    sections = [
+        ("Ein erweitertes Führungszeugnis fehlt für:",        "fehlt"),
+        ("Das erweiterte Führungszeugnis ist nicht mehr gültig für:", "abgelaufen"),
+        (f"Das erweiterte Führungszeugnis wird innerhalb von {months_text} ungültig für:", "bald"),
+        ("Das erweiterte Führungszeugnis ist gültig für:",    "ok"),
+    ]
 
-    # Dies sind die Textvariablen für die verschiedenen Listen der Benutzer
-    ef_fehlt = ""
-    ef_abgelaufen = ""  
-    ef_alt = ""
-    ef_ok = ""
-
-    # Dies ist der Text, der als Gesamtbericht zurückgegeben wird.
-    user_data = ""
+    # Listen: Tupel (nachname, vorname, ef_datum_str, gueltig_bis_str)
+    # ef_datum_str / gueltig_bis_str sind "–" wenn kein Datum vorhanden
+    ef_fehlt     = []
+    ef_abgelaufen = []
+    ef_alt       = []
+    ef_ok        = []
 
     # Setze die Locale auf Deutsch, damit der ausgeschriebene Monatsname in den Datumsangaben auf Deutsch ist
     locale.setlocale(locale.LC_TIME, "de_DE.utf8")
 
     # Prüfe alle Benutzer
     for user in users:
-        # Wird ein erweitertes Führungszeugnis benötigt?
-        # Dazu muss der Wert in ef_benoetigt ("Benötigt ein erweitertes Führungszeugnis") True sein
         if user.get(needs_ef_col):
-            # Ja, es wird ein Führungszeugnis benötigt
+            last  = user.get('lastName',  '')
+            first = user.get('firstName', '')
+            ef_datum_raw = str(user.get(ef_date_col))
 
-            # Prüfe, ob ein Führungszeugnis vorhanden ist. 
-            # D.h. ob in dem Feld ef_datum (Erstellung des erweiterten Führungszeugnisses) ein Datum eingetragen ist
-            ef_datum = str(user.get(ef_date_col))
-            if ef_datum == "None":
-                # Es ist kein Datum vorthanden, das benötigte Führungszeugnis fehlt
-                # Füge den Benutzer zur Liste ef_fehlt hinzu
-                ef_fehlt += f"- {user.get('firstName')} {user.get('lastName')}\n"
+            if ef_datum_raw == "None":
+                ef_fehlt.append((last, first, "–", "–"))
             else:
-                # Es gibt ein Führungszeugnis mit einem Erstellungsdatum
-                # Wir prüfen, ob es noch gültig ist oder bald ungültig wird
-
-                # ef_date ist ein String Objekt mit dem Datum der erstellung des Führungszeugnisses
-                ef_date = datetime.strptime(ef_datum, "%Y-%m-%d")
-
-                # ef_date ist ein datetime Objekt mit dem Datum der erstellung des Führungszeugnisses
-                ef_datum = ef_date.strftime("%#d. %B %Y")
-
-                # ef_expiry ist ein datetime Objekt mit dem Ablaufdatum des Führungszeugnisses
+                ef_date   = datetime.strptime(ef_datum_raw, "%Y-%m-%d")
+                ef_datum  = ef_date.strftime("%-d. %B %Y")
                 ef_expiry = ef_date + relativedelta(years=ef_valid_years)
+                ef_ablauf = ef_expiry.strftime("%-d. %B %Y")
+                ef_warn   = ef_expiry - relativedelta(months=ef_warn_months)
 
-                # ef_expiry ist ein String Objekt mit dem Ablaufdatum des Führungszeugnisses
-                ef_ablauf = ef_expiry.strftime("%#d. %B %Y")
-
-                # ef_warn ist ein datetime Objekt mit dem Datum, ab dem vor dem Ablauf des Führungszeugnisses gewarnt wird
-                ef_warn = ef_expiry - relativedelta(months=ef_warn_months)
-
-                # Ist das Fphrungszeugnis abgelaufen?
                 if ef_expiry < datetime.now():
-                    # Ja, das Führungszeugnis ist abgelaufen
-                    # Füge den Benutzer zur Liste ef_abgelaufen hinzu
-                    ef_abgelaufen += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist am {ef_ablauf} abgelaufen.\n"
-
+                    ef_abgelaufen.append((last, first, ef_datum, ef_ablauf))
                 elif ef_warn < datetime.now():
-                    # Das Führungszeugnis läuft bald ab
-                    # Füge den Benutzer zur Liste ef_alt hinzu
-                    ef_alt += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} läuft am {ef_ablauf} ab.\n"
-
+                    ef_alt.append((last, first, ef_datum, ef_ablauf))
                 else:
-                    # Das Führungszeugnis ist noch lage genug gültig
-                    ef_ok += f"- {user.get('firstName')} {user.get('lastName')}: Das Führungszeugnis vom {ef_datum} ist bis zum {ef_ablauf} gültig.\n"
+                    ef_ok.append((last, first, ef_datum, ef_ablauf))
 
-    # Zeige einen Abschnitt nur ann, wenn dafür Benutzer vorhanden sind
+    def html_table(entries):
+        """Gibt eine HTML-Tabelle für eine sortierte Eintrags-Liste zurück."""
+        rows = ""
+        for last, first, datum, ablauf in sorted(entries):
+            rows += (
+                f"<tr>"
+                f"<td style='padding:4px 8px;border:1px solid #ccc;'>{first} {last}</td>"
+                f"<td style='padding:4px 8px;border:1px solid #ccc;'>{datum}</td>"
+                f"<td style='padding:4px 8px;border:1px solid #ccc;'>{ablauf}</td>"
+                f"</tr>"
+            )
+        return (
+            "<table style='border-collapse:collapse;font-size:14px;'>"
+            "<thead><tr>"
+            "<th style='padding:4px 8px;border:1px solid #ccc;text-align:left;'>Name</th>"
+            "<th style='padding:4px 8px;border:1px solid #ccc;text-align:left;'>Datum des Führungszeugnisses</th>"
+            "<th style='padding:4px 8px;border:1px solid #ccc;text-align:left;'>Gültig bis</th>"
+            "</tr></thead>"
+            f"<tbody>{rows}</tbody>"
+            "</table>"
+        )
 
-    if len(ef_fehlt) > 0:
-        # Wenn vorhanden, füge die Liste der Benutzer, für die ein Führungszeugnis fehlt, zum Gesamtbericht hinzu
-        user_data += ef_fehlt_head + ef_fehlt + "\n"
+    category_map = {"fehlt": ef_fehlt, "abgelaufen": ef_abgelaufen, "bald": ef_alt, "ok": ef_ok}
 
-    if len(ef_abgelaufen) > 0:
-        # Wenn vorhanden, füge die Liste der Benutzer, deren Führungszeugnis abgelaufen ist, zum Gesamtbericht hinzu
-        user_data += ef_abgelaufen_head + ef_abgelaufen + "\n"
+    # Baue den HTML-Bericht auf (für E-Mail)
+    html_body = ""
+    for heading, key in sections:
+        entries = category_map[key]
+        if entries:
+            html_body += f"<h3>{heading}</h3>{html_table(entries)}"
+    if not html_body:
+        html_body = "<p>Es sind keine Benutzer gefunden worden, die ein erweitertes Führungszeugnis benötigen.</p>"
 
-    if len(ef_alt) > 0:
-        # Wenn vorhanden, füge die Liste der Benutzer, deren Führungszeugnis bald abläuft, zum Gesamtbericht hinzu
-        user_data += ef_alt_head + ef_alt + "\n"
+    # Baue den Plain-Text-Bericht auf (für ChurchTools Post)
+    plain_body = ""
+    plain_headings = {
+        "fehlt":      "Ein erweitertes Führungszeugnis fehlt für:",
+        "abgelaufen": "Das erweiterte Führungszeugnis ist nicht mehr gültig für:",
+        "bald":       sections[2][0],
+        "ok":         "Das erweiterte Führungszeugnis ist gültig für:",
+    }
+    for heading, key in sections:
+        entries = category_map[key]
+        if entries:
+            plain_body += plain_headings[key] + "\n"
+            for last, first, datum, ablauf in sorted(entries):
+                if datum == "–":
+                    plain_body += f"- {first} {last}\n"
+                else:
+                    plain_body += f"- {first} {last}: Führungszeugnis vom {datum}, gültig bis {ablauf}\n"
+            plain_body += "\n"
+    if not plain_body:
+        plain_body = "Es sind keine Benutzer gefunden worden, die ein erweitertes Führungszeugnis benötigen.\n"
 
-    if len(ef_ok) > 0:
-        # Wenn vorhanden, füge die Liste der Benutzer, deren Führungszeugnis noch gültig ist, zum Gesamtbericht hinzu
-        user_data += ef_ok_head + ef_ok + "\n"
-
-    if len(user_data) == 0:
-        # Wenn keine Benutzer vorhanden sind, die ein Führungszeugnis benötigen, gebe eine entsprechende Nachricht zurück
-        user_data = "Es sind keine Benutzer gefunden worden, die ein erweitertes Führungszeugnis benötigen.\n"
-
-    # Liefere den Gesamtbericht zurück
-    return user_data
+    return plain_body, html_body
 
 def delete_previous_posts():
     # Lösche alle vorherigen Posts mit dem Titel "Status der erweiterten Führungszeugnisse"
@@ -199,12 +204,16 @@ def post_to_group(message):
 
 def send_email(message):
     # Send the email with the report
-    # Create the container (outer) email message.
-    msg = MIMEText("""*** Dies ist eine automatisch generierte Nachricht. ***\n\n
-Hallo,\n\nHier ist der Status der erweiterten Führungszeugnisse:\n\n
-""" + message + """
-Wenn Du diese Nachricht nicht mehr erhalten möchtest, sag mir bitte Bescheid.\n\n
-Viele Grüße,\nFrank""")
+    html = f"""<!DOCTYPE html>
+<html lang="de"><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
+<p><em>*** Dies ist eine automatisch generierte Nachricht. ***</em></p>
+<p>Hallo,</p>
+<p>hier ist der aktuelle Status der erweiterten Führungszeugnisse:</p>
+{message}
+<p>Wenn Du diese Nachricht nicht mehr erhalten möchtest, sag mir bitte Bescheid.</p>
+<p>Viele Grüße,<br>Frank</p>
+</body></html>"""
+    msg = MIMEText(html, 'html', 'utf-8')
     msg['Subject'] = 'Status der erweiterten Führungszeugnisse'
     msg['From'] = smtp_username
     msg['To'] = email_recipients
@@ -222,11 +231,10 @@ Viele Grüße,\nFrank""")
 
 def main():
     delete_previous_posts()
-    text = get_users()
-    post_to_group(text)
+    plain_text, html_text = get_users()
+    post_to_group(plain_text)
     if use_email:
-        # Send the email with the report
-        send_email(text)
+        send_email(html_text)
 
 if __name__ == "__main__":
     main()
