@@ -9,7 +9,7 @@ from io import BytesIO
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.cell.rich_text import CellRichText, TextBlock, InlineFont
-from config import BASE_URL, use_email, smtp_server, smtp_port, smtp_username, email_recipients
+from config import use_email, smtp_server, smtp_port, smtp_username, email_recipients
 #use_email = False
 
 if use_email:
@@ -45,7 +45,7 @@ parameters = [
     {
         "name" : "Duvenstedt",
         "id" : "DUV",
-        "calendar_ids" : [2],
+        "calendar_ids" : [2,39],
         "calender_title" : "Gottesdienst (durch PastorInnen zu erstellen)",
         "url_name" : "cantatekirche",
         "resource_ids" : [8],
@@ -74,12 +74,12 @@ def get_services(from_date=None, to_date=None):
         ['Gemeinde', 'Standort', 'Datum (Sortierung)', 'Datum', 'Beginn', 'Ende', 'Name',
          'Dienstplan_Notiz', 'Kalender_Untertitel', 'Kalender_Beschreibung', 'Raum', 'Pastor*in', 'Organist*in'],
     ]
+    person_titel_cache = {}  # (base_url, person_id) -> gottesdienstplan_titel
     for param in parameters:
         ID = param.get("id")
         NAME = param.get("name")
         BASE_URL = f"https://{param.get("url_name")}.church.tools/api"
         CALENDAR_IDS = param.get("calendar_ids")
-        CALENDAR_TITLE = param.get("calender_title")
         RESOURCE_IDS = param.get("resource_ids")
         MUSIK_SERVICE_ID = param.get("musik_service_id")
         PASTORES_SERVICE_ID = param.get("pastores_service_id")
@@ -129,17 +129,18 @@ def get_services(from_date=None, to_date=None):
             # Das "to" Feld ist nötig, weil sonst nur Termine des aktuellen Monats geladen werden
             "to": _to,
         }
-        # Gottesdienste Kalender hat die ID 2 für Volksdorf
-        appointments_response = requests.get(f"{BASE_URL}/calendars/{CALENDAR_IDS[0]}/appointments", headers=headers, params=params)    
-        appointments_response.raise_for_status()
-        appointments = appointments_response.json().get("data", [])
-        pagination = appointments_response.json().get("meta").get("pagination")
-        if pagination:
-            pages = pagination.get("lastPage")
-            for page in range(2, pages + 1):
-                appointments_response = requests.get(f"{BASE_URL}/calendars/{CALENDAR_IDS[0]}/appointments?page={page}", headers=headers, params=params)
-                appointments_response.raise_for_status()
-                appointments.extend(appointments_response.json().get("data", []))
+        appointments = []
+        for cal_id in CALENDAR_IDS:
+            appointments_response = requests.get(f"{BASE_URL}/calendars/{cal_id}/appointments", headers=headers, params=params)
+            appointments_response.raise_for_status()
+            appointments.extend(appointments_response.json().get("data", []))
+            pagination = appointments_response.json().get("meta").get("pagination")
+            if pagination:
+                pages = pagination.get("lastPage")
+                for page in range(2, pages + 1):
+                    appointments_response = requests.get(f"{BASE_URL}/calendars/{cal_id}/appointments?page={page}", headers=headers, params=params)
+                    appointments_response.raise_for_status()
+                    appointments.extend(appointments_response.json().get("data", []))
         print(f"{len(appointments)} Kalendereinträge für {NAME} gefunden.")
 
         # Lade alle Raumbuchungen für die Gottesdienste
@@ -178,7 +179,7 @@ def get_services(from_date=None, to_date=None):
         # Organist*in            - Organist*in (aus event.eventServices mit serviceId 2)
         # Gottesdienste
         for event in events:
-            if event.get("calendar").get("title") == CALENDAR_TITLE:
+            if int(event.get("calendar", {}).get("domainIdentifier", 0)) in CALENDAR_IDS:
                 if event.get("calendar").get("domainAttributes").get("campusName"):
                     location = event.get("calendar").get("domainAttributes").get("campusName")
                 else:
@@ -193,7 +194,26 @@ def get_services(from_date=None, to_date=None):
                         if service.get("serviceId") == MUSIK_SERVICE_ID:
                             musik.append(service.get("name"))
                         if service.get("serviceId") == PASTORES_SERVICE_ID:
-                            pastores.append(service.get("name"))
+                            person_id = service.get("personId")
+                            titel = ""
+                            name = service.get("name") or ""
+                            if person_id:
+                                cache_key = (BASE_URL, person_id)
+                                if cache_key not in person_titel_cache:
+                                    try:
+                                        r = requests.get(f"{BASE_URL}/persons/{person_id}", headers=headers)
+                                        r.raise_for_status()
+                                        data = r.json().get("data", {})
+                                        person_titel_cache[cache_key] = (
+                                            data.get("gottesdienstplan_titel", "") or "",
+                                            data.get("lastName", "") or "",
+                                        )
+                                    except Exception:
+                                        person_titel_cache[cache_key] = ("", "")
+                                titel, last_name = person_titel_cache[cache_key]
+                                if last_name:
+                                    name = last_name
+                            pastores.append(f"{titel} {name}".strip() if titel else name)
                 appointment_id = event.get("appointmentId")
                 appointment = next((a for a in appointments if a.get("base").get("id") == appointment_id), None)
                 if appointment:
@@ -222,7 +242,7 @@ def get_services(from_date=None, to_date=None):
                     f"{calendar.day_name[event_start_date.weekday()]}, den {event_start_date.strftime('%d.%m.%Y')}",
                     event_start_date.strftime('%H:%M'),
                     event_end_date.strftime('%H:%M'),
-                    event.get('name'),
+                    _clean_name(event.get('name')),
                     note,
                     subtitle,
                     description,
@@ -260,6 +280,15 @@ def get_services(from_date=None, to_date=None):
     return rows, kirchenjahr_rows
 
 _BERLIN = ZoneInfo("Europe/Berlin")
+
+_NAME_TAGS = (" (LM)", " (WO)", " (B)", " LM", " WO", " B")
+
+def _clean_name(name):
+    if not name:
+        return name
+    for tag in _NAME_TAGS:
+        name = name.replace(tag, "")
+    return name
 
 ARIAL = Font(name="Arial")
 ARIAL_BOLD = Font(name="Arial", bold=True)
@@ -303,10 +332,10 @@ def _build_gemeindebrief_sheet(wb, sheet_title, sorted_data, highlight_gemeinde,
         if untertitel not in ('(kein Untertitel)', '(Kein Kalendereintrag)'):
             desc_parts.append(untertitel)
         if pastor != '(keine Pastor*in)':
-            desc_parts.append(f"P: {pastor}")
-        if organist != '(kein Organist*in)':
-            desc_parts.append(f"Musik: {organist}")
-        description = ' - '.join(desc_parts)
+            desc_parts.append(pastor)
+        # if organist != '(kein Organist*in)':
+        #    desc_parts.append(f"Musik: {organist}")
+        description = ' | '.join(desc_parts)
         fill = LIGHT_BLUE_FILL if service[0] == highlight_gemeinde else None
         # Build column B: standort bold; for Volksdorf append cleaned room in normal weight
         standort = service[1]
@@ -340,6 +369,61 @@ def _build_gemeindebrief_sheet(wb, sheet_title, sorted_data, highlight_gemeinde,
     # Column C: 11 cm (≈ 55 Excel character units)
     ws.column_dimensions['C'].width = 55
 
+def _build_readme_sheet(wb):
+    ws = wb.create_sheet(title="README")
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions['A'].width = 3   # left margin
+    ws.column_dimensions['B'].width = 90  # main content
+
+    _H1   = Font(name="Arial", bold=True, size=14)
+    _H2   = Font(name="Arial", bold=True, size=11)
+    _BODY = Font(name="Arial", size=11)
+    _LINK = Font(name="Arial", size=11, color="1A6BBF", underline="single")
+    _WRAP = Alignment(wrap_text=True, vertical='top')
+
+    row = [1]
+
+    def text(value, font=None, h=18, link=None):
+        c = ws.cell(row=row[0], column=2, value=value)
+        c.font = font or _BODY
+        c.alignment = _WRAP
+        if link:
+            c.hyperlink = link
+        ws.row_dimensions[row[0]].height = h
+        row[0] += 1
+
+    def blank():
+        ws.row_dimensions[row[0]].height = 8
+        row[0] += 1
+
+    text("Informationen zur Excel-Datei", font=_H1, h=24)
+    blank()
+    text("Diese Excel-Datei kann zur Erstellung der Gemeindebriefe genutzt werden. "
+         "Sie hat folgende Arbeitsblätter:", h=36)
+    text("\u2192  Gemeindebrief - Volksdorf",    font=_H2)
+    text("\u2192  Gemeindebrief - Duvenstedt",   font=_H2)
+    text("\u2192  Gemeindebrief - OA-Bergstedt", font=_H2)
+    text("\u2192  Gottesdienste",                font=_H2)
+    text("In den Gemeindebrief-Arbeitsblättern sind die Gottesdienste der jeweiligen Gemeinde "
+         "hellblau hinterlegt. Alle Arbeitsblätter enthalten alle Gottesdienste.", h=36)
+    blank()
+    text("Die folgenden Informationen aus ChurchTools werden verwendet:", font=_H2, h=18)
+    text("1.  Alle Einträge der jeweiligen \u201eGottesdienst\u201c-Kalender der ChurchTools-Instanzen "
+         "werden angezeigt.")
+    text("2.  Datum und Uhrzeit sind vom Gottesdienst-Kalendereintrag.")
+    text("3.  Die zweite Spalte zeigt den Standort aus ChurchTools; nur bei der Gemeinde Volksdorf "
+         "wird zus\u00e4tzlich der gebuchte Raum in Klammern hinter dem Standort angezeigt.", h=36)
+    text("4.  Der Text in der dritten Spalte setzt sich wie folgt zusammen:")
+    text("    a)  Der Titel des Kalendereintrags")
+    text("    b)  Der Untertitel des Kalendereintrags")
+    text("    c)  Die Pastoren/Leitung aus dem Dienstplan")
+    blank()
+    text("\u00c4nderungen oder Anpassungen werden in ChurchTools vorgenommen. Von", h=28)
+    text("https://example.com/gottesdienste", font=_LINK, link="https://example.com/gottesdienste")
+    text("kann der aktualisierte Plan jederzeit heruntergeladen werden.")
+    return ws
+
+
 def create_excel(rows, kirchenjahr_rows):
     wb = openpyxl.Workbook()
 
@@ -364,6 +448,11 @@ def create_excel(rows, kirchenjahr_rows):
 
     # Move Gottesdienste sheet to the far right
     wb.move_sheet("Gottesdienste", offset=len(wb.sheetnames) - 1)
+
+    # README sheet: first position, active on open
+    readme_ws = _build_readme_sheet(wb)
+    wb.move_sheet("README", offset=-(len(wb.sheetnames) - 1))
+    wb.active = readme_ws
 
     output = BytesIO()
     wb.save(output)
