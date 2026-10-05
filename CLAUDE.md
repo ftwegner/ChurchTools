@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`gottesdienst-export.py` fetches church service data from three ChurchTools instances via REST API and produces a formatted Excel workbook. Optionally sends the workbook as an email attachment.
+`gottesdienst-export.py` fetches church service data from three ChurchTools instances via REST API and produces a formatted Excel workbook plus one PDF per Gemeinde (`VOL-`, `DUV-`, `OAB-Gottesdienste.pdf`). Optionally sends all four files as attachments of one email. No files are written to disk.
 
 ## Running the script
 
@@ -20,6 +20,7 @@ Installed via `.venv` (virtual environment in the project root):
 |---|---|
 | `requests` | ChurchTools REST API calls |
 | `openpyxl` | Excel workbook creation and styling |
+| `reportlab` | PDF generation (Gemeindebrief-PDFs) |
 | `python-dateutil` | Listed in `requirements.txt`; not directly imported in this script |
 
 Standard library used: `locale`, `os`, `sys`, `calendar`, `datetime`, `zoneinfo`, `io`, `smtplib`, `email`.
@@ -49,6 +50,12 @@ Install: `pip install -r requirements.txt` (then also `pip install openpyxl` —
 | `SMTP_PASSWORD` | Password for the SMTP sender account |
 
 Authentication header: `Authorization: Login <TOKEN>`
+
+### Login-token session change (ChurchTools, announced 2026-08-21)
+
+ChurchTools is changing the default behavior of REST-API login tokens: they will no longer implicitly create a server-side session. Clients that still want a session can request one by sending `with_session=true` as a query parameter on login. The new (session-less) behavior can already be enabled per-instance in ChurchTools system settings to test compatibility ahead of time.
+
+**No code changes needed here.** Every API call in this repo (`gottesdienst-export.py`, `dienstplan_infos.py`, `erweiterte-fuehrungszeugnisse.py`) is a standalone `requests.get`/`post`/`put` call that resends its own `Authorization: Login <TOKEN>` header — none of them use `requests.Session()`, cookies, or call `/api/login`. They never relied on the server-side session ChurchTools was creating as a side effect, so they're already compatible with the upcoming session-less default.
 
 If a token is missing for an instance, that instance is skipped (warning printed, no crash).
 If `use_email=True` and `SMTP_PASSWORD` is unset, the script raises `ValueError` immediately.
@@ -88,9 +95,12 @@ ChurchTools API
           ↓
   get_services() → rows (list of lists), kirchenjahr_rows
           ↓
-  create_excel()  → openpyxl Workbook → bytes (BytesIO)
+  sorted_gemeindebrief_days() → days (grouped per date, texts prepared; shared by Excel + PDF)
           ↓
-  send_email()    → SMTP attachment  (only if use_email=True)
+  create_excel()  → openpyxl Workbook → bytes (BytesIO)
+  create_pdf()    → one PDF per Gemeinde (reportlab) → bytes
+          ↓
+  send_email()    → SMTP, 4 attachments  (only if use_email=True)
 ```
 
 ## Excel output structure
@@ -109,13 +119,26 @@ The workbook produced by `create_excel()` has these sheets (in order):
 |---|---|---|
 | A | 7 | Start time (`HH:MM`) |
 | B | 25 | Standort (bold) + room in parentheses (Volksdorf only) — uses `CellRichText` |
-| C | 55 | `Name - Untertitel - P: Pastor - Musik: Organist` |
+| C | 55 | `Name \| Pastor*in (Leitung) \| Untertitel` (Musik currently commented out) |
 
 Date headings span all 3 columns; Kirchenjahr titles replace weekday names where available.
 
 ### Gottesdienste sheet columns
 
 `Gemeinde`, `Standort`, `Datum (Sortierung)`, `Datum`, `Beginn`, `Ende`, `Name`, `Dienstplan_Notiz`, `Kalender_Untertitel`, `Kalender_Beschreibung`, `Raum`, `Pastor*in`, `Organist*in`
+
+## PDF output (Gemeindebrief-PDFs)
+
+`create_pdf(days, highlight_gemeinde, design)` renders the same content as the corresponding Gemeindebrief sheet (all three Gemeinden, own Gemeinde highlighted). Mapping Kürzel → highlighted Gemeinde → sheet → PDF filename is in `GEMEINDEBRIEFE`.
+
+- **Design per Gemeinde:** `PDF_DESIGNS["VOL"|"DUV"|"OAB"]`; currently all copies of `_PDF_DESIGN_STANDARD`. Override single keys with `{**_PDF_DESIGN_STANDARD, "key": value}`.
+- **Standard design:** 13.5 × 18.5 cm portrait, 0.5 cm margins; Open Sans 9pt / 10pt leading; cell padding 3pt top/bottom; 8pt space above each date heading.
+- **Date heading** (`_DateHeading` flowable): date ExtraBold 10pt + Sonntagsname/weekday SemiBold 10pt; on the first day of each month the month name in CAPS, SemiBold 15pt, right-aligned in the month's design color.
+- **Ort column:** Standort SemiBold, room in parentheses Regular.
+- **Colors (CMYK):** season colors per month (`_FARBE_WINTER/FRUEHLING/SOMMER/HERBST`). Rows of the own Gemeinde get an 11 % tint (`highlight_opacity`) of the color of the **first date on the page** — one color per page. Implemented as two render passes: pass 1 records on which page each day lands (`_GemeindebriefDocTemplate.afterFlowable`; a day split across pages keeps the color of its start page), pass 2 renders with the per-page colors (colors don't affect layout).
+- **Page breaks** (`_DayBlock` flowable): a day (heading + table) that doesn't fit on the current page moves completely to the next page, so every page starts with a date. A day longer than a whole page is split; the date heading is repeated on the next page without month name and with "(Fortsetzung)" (Regular). Frame has zero padding so the page margin is exactly `margin_cm`.
+- **24.12. page reference:** `sorted_gemeindebrief_days(rows, kirchenjahr_rows, dec24_page=N, from_date, to_date)` drops all services starting on 24.12. and adds, for every 24.12. within the date range, a day with the normal date heading and a `note` ("Die Gottesdienste am 24.12. finden Sie auf Seite N dieses Gemeindebriefes."). Rendered in the PDF as a full-width table row (Regular, lines, no background) and in Excel as a merged row. Used by the web wrapper's `--seite-24-12 N`.
+- **Fonts:** TTFs bundled in `fonts/` (Open Sans, SIL OFL, see `fonts/OFL.txt`) so the script works on the server without installed fonts.
 
 ## Locale
 
@@ -125,6 +148,54 @@ Date headings span all 3 columns; Kirchenjahr titles replace weekday names where
 
 - Pagination for events uses `?page=N` appended as a raw query string while still passing the full `params` dict — this works but results in duplicate query parameters on subsequent pages.
 - Timezone: all datetimes are converted to `Europe/Berlin` via `zoneinfo.ZoneInfo`.
+
+---
+
+# gottesdienst-aushang.py — Word-Aushang mit Gottesdienstterminen
+
+## Purpose
+
+`gottesdienst-aushang.py` teilt sich die ChurchTools-Datenbeschaffung (Events, Kalendereinträge, Raumbuchungen, Pastor*innen aus dem Dienstplan) mit `gottesdienst-export.py`, erzeugt daraus aber statt einer Excel-Datei einen einseitigen Word-Aushang `docs/Aushang.docx` auf Basis der Vorlage `docs/Aushang-template.docx`.
+
+## Running the script
+
+```bash
+python gottesdienst-aushang.py
+```
+
+Keine CLI-Argumente. Vor dem Start werden zwei Variablen oben im Skript manuell gesetzt (gleiches Prinzip wie `APPLY_EDITS` in `dienstplan_infos.py`):
+
+| Variable | Beschreibung |
+|---|---|
+| `AUSHANG_DATE` | Datum, ab dem Gottesdienste berücksichtigt werden (Default: `date.today()`) |
+| `GEMEINDEN` | Liste der Gemeinden-Kürzel (`"VOL"`, `"DUV"`, `"OAB"`), Default `["VOL"]` |
+
+## Vorlage und Musterdatei
+
+- `docs/Aushang-template.docx` — leere Word-Vorlage: Logo/Überschriftenblock + Tabelle mit Kopfzeile und ein paar leeren Datenzeilen.
+- `docs/Aushang-sample.docx` — Referenzdatei mit zwei ausgefüllten Beispielzeilen und einer Zeile, die die Feldnamen zeigt (`<Date>`, `<start-time><location>`, `<pastores><title> <subtitle>`), aus der das Spaltenmapping abgeleitet wurde.
+
+### Spaltenmapping (aus den `rows`-Zeilen von `get_services()`)
+
+| Tabellenspalte | Zeile 1 | Zeile 2 |
+|---|---|---|
+| Datum | `d.m.yyyy` ohne führende Nullen (z. B. `6.9.2026`) | (leer) |
+| Zeit/Ort | Beginn als `H Uhr` bzw. `H:MM Uhr` | Raum (`Raum`-Feld); Fallback auf `Standort`, wenn keine Raumbuchung existiert |
+| Liturgie / Gottesdienst | Pastor*in (`Pastor*in`-Feld, " / "-getrennt statt " \| ") | `Name` + `Kalender_Untertitel` (Untertitel wird weggelassen, wenn Platzhalter wie `(kein Untertitel)`) |
+
+Die Überschriftenzeile "im {Monat} {Jahr}" wird aus `AUSHANG_DATE` aktualisiert (deutsche Monatsnamen aus einer festen Liste, unabhängig von der System-Locale). "Unsere Gottesdienste" bleibt unverändert.
+
+## Seitenfüllung (wie viele Gottesdienste passen auf die Seite?)
+
+Es gibt keine echte Word-Layout-Engine in Python. Das Skript schätzt stattdessen anhand von Zeichenanzahl je Spaltenbreite und Zeilenhöhe (kalibriert anhand der tatsächlichen Seiten-/Spaltenmaße aus `Aushang-template.docx`, siehe Konstanten `_FIXED_TOP_BLOCK_TWIPS`, `_LINE_HEIGHT_TWIPS`, `_CHARS_PER_LINE_COL2/3`), wie viele Zeilen (inkl. Zeilenumbrüchen bei langen Pastor*in-/Titel-Texten) noch auf eine A4-Seite passen. Tabellenzeilen werden mit Höhenregel "mindestens" gesetzt, damit Word bei einer leicht zu knappen Schätzung trotzdem selbst nachjustieren kann. Nicht mehr passende Gottesdienste (chronologisch nach den ersten N) werden weggelassen; das Skript gibt dazu einen Hinweis auf STDOUT aus.
+
+Die Tabelle in `Aushang-template.docx` wird dynamisch um Zeilen ergänzt oder gekürzt (per Kopie/Löschen der leeren Vorlagenzeilen), je nachdem wie viele Zeilen tatsächlich passen — die Zeilenanzahl der Vorlage selbst ist keine feste Obergrenze.
+
+## Unterschiede zu gottesdienst-export.py
+
+- Keine Kirchenjahr-Abfrage (Kalender 14, nur für die Gemeindebrief-Excel relevant).
+- Kein Email-Versand.
+- `get_services()` akzeptiert zusätzlich `gemeinden=` zum Filtern auf einzelne ChurchTools-Instanzen.
 
 ---
 

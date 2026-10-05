@@ -1,3 +1,5 @@
 requests
 openpyxl
 tzdata
+python-docx
+reportlab
