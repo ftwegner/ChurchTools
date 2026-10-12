@@ -2,3 +2,4 @@ __pycache__
 .venv
 mkdocs.yml
 requirements-pip-freeze.txt
+CLAUDE.md
