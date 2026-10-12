@@ -15,7 +15,9 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Table, TableStyle, Paragraph, Flowable
+from reportlab.lib.enums import TA_CENTER
+from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame, Table, TableStyle, Paragraph, Flowable,
+                                PageBreak, Spacer, KeepTogether)
 from config import use_email, smtp_server, smtp_port, smtp_username, email_recipients
 #use_email = False
 
@@ -254,7 +256,7 @@ def get_services(from_date=None, to_date=None):
                     subtitle,
                     description,
                     b_text,
-                    " | ".join(pastores),
+                    ", ".join(pastores),   # mehrere Leitungen mit Komma trennen
                     " | ".join(musik),
                 ])
 
@@ -335,11 +337,13 @@ def _gemeindebrief_days(sorted_data, kirchenjahr_by_date):
         untertitel = service[8] or ''
         pastor     = service[11] or ''
         organist   = service[12] or ''
+        leitung    = pastor if pastor != '(keine Pastor*in)' else None
+        untertitel = untertitel if untertitel not in ('(kein Untertitel)', '(Kein Kalendereintrag)') else None
         # Reihenfolge: Titel | Leitung (Pastor*in) | Untertitel
         desc_parts = [name]
-        if pastor != '(keine Pastor*in)':
-            desc_parts.append(pastor)
-        if untertitel not in ('(kein Untertitel)', '(Kein Kalendereintrag)'):
+        if leitung:
+            desc_parts.append(leitung)
+        if untertitel:
             desc_parts.append(untertitel)
         # if organist != '(kein Organist*in)':
         #    desc_parts.append(f"Musik: {organist}")
@@ -354,6 +358,10 @@ def _gemeindebrief_days(sorted_data, kirchenjahr_by_date):
             "standort": service[1],
             "raum": raum_clean,
             "description": ' | '.join(desc_parts),
+            # Einzelfelder (für die Heiligabend-Seite)
+            "name": name,
+            "leitung": leitung,
+            "untertitel": untertitel,
         })
     return days
 
@@ -456,21 +464,20 @@ def _build_readme_sheet(wb):
 
 
 # Gemeindebrief-Ausgaben je Gemeinde: (Kürzel, hervorgehobene Gemeinde, Excel-Sheet, PDF-Dateiname)
+# Excel-Sheet None = nur PDF (Farbvariante ohne eigenes Arbeitsblatt)
 GEMEINDEBRIEFE = [
     ("VOL", "Volksdorf",            "Gemeindebrief - Volksdorf",    "VOL-Gottesdienste.pdf"),
     ("DUV", "Duvenstedt",           "Gemeindebrief - Duvenstedt",   "DUV-Gottesdienste.pdf"),
     ("OAB", "Oberalster Bergstedt", "Gemeindebrief - OA-Bergstedt", "OAB-Gottesdienste.pdf"),
+    ("OAB_CYAN", "Oberalster Bergstedt", None,                     "OAB-Cyan-Gottesdienste.pdf"),
 ]
-
-def _is_christmas_eve(d):
-    return (d.month, d.day) == (12, 24)
 
 def sorted_gemeindebrief_days(rows, kirchenjahr_rows, dec24_page=None, from_date=None, to_date=None):
     """dec24_page: Wenn gesetzt, werden die Gottesdienste am 24.12. (nach Beginn) weggelassen.
     Stattdessen erscheint für jeden 24.12. im Zeitraum from_date..to_date die Datumszeile mit
-    einem Hinweis auf die Seite des Gemeindebriefs, auf der die Gottesdienste stehen."""
-    if dec24_page:
-        rows = rows[:1] + [r for r in rows[1:] if not _is_christmas_eve(r[2])]
+    einem Hinweis auf die Seite des Gemeindebriefs, auf der die Gottesdienste stehen.
+    Die herausgenommenen Gottesdienste bleiben unter "christmas_eve_services" erhalten
+    (Grundlage für die Heiligabend-Extraseite im PDF)."""
     sorted_data = sorted(rows[1:], key=lambda r: r[2])  # sort by datetime (skip 1 header row)
     kirchenjahr_by_date = {dt.date(): caption for dt, caption in kirchenjahr_rows}
     days = _gemeindebrief_days(sorted_data, kirchenjahr_by_date)
@@ -479,13 +486,17 @@ def sorted_gemeindebrief_days(rows, kirchenjahr_rows, dec24_page=None, from_date
         _to   = date.fromisoformat(to_date or TO)
         for year in range(_from.year, _to.year + 1):
             dec24 = date(year, 12, 24)
-            if _from <= dec24 <= _to:
-                days.append({
-                    "date": dec24,
-                    "bracket_text": kirchenjahr_by_date.get(dec24) or calendar.day_name[dec24.weekday()],
-                    "services": [],
-                    "note": f"Die Gottesdienste am 24.12. finden Sie auf Seite {dec24_page} dieses Gemeindebriefes.",
-                })
+            if not _from <= dec24 <= _to:
+                continue
+            day = next((d for d in days if d["date"] == dec24), None)
+            if day is None:
+                day = {"date": dec24,
+                       "bracket_text": kirchenjahr_by_date.get(dec24) or calendar.day_name[dec24.weekday()],
+                       "services": []}
+                days.append(day)
+            day["christmas_eve_services"] = day["services"]
+            day["services"] = []
+            day["note"] = f"Die Gottesdienste am 24.12. finden Sie auf Seite {dec24_page} dieses Gemeindebriefes."
         days.sort(key=lambda d: d["date"])
     return days
 
@@ -506,7 +517,8 @@ def create_excel(rows, days):
 
     # Sheets 2–4: Gemeindebrief per Gemeinde
     for _, gemeinde, sheet_title, _ in GEMEINDEBRIEFE:
-        _build_gemeindebrief_sheet(wb, sheet_title, days, gemeinde)
+        if sheet_title:
+            _build_gemeindebrief_sheet(wb, sheet_title, days, gemeinde)
 
     # Move Gottesdienste sheet to the far right
     wb.move_sheet("Gottesdienste", offset=len(wb.sheetnames) - 1)
@@ -571,11 +583,38 @@ _PDF_DESIGN_STANDARD = {
 }
 
 # Design je Gemeinde; Abweichungen z. B. mit {**_PDF_DESIGN_STANDARD, "font_size": 8}
-PDF_DESIGNS = {
-    "VOL": dict(_PDF_DESIGN_STANDARD),
-    "DUV": dict(_PDF_DESIGN_STANDARD),
-    "OAB": dict(_PDF_DESIGN_STANDARD),
+# Heiligabend-Extraseite (nur wenn eine Seitenzahl für den 24.12. gewählt wurde):
+# Gottesdienste der Gemeinde am 24.12. in Spalten je Raum; alle anderen auf einer Zusatzseite.
+_HEILIGABEND_SEITE_VOL = {
+    "gemeinde": "Volksdorf",
+    "title": "Heiligabend",
+    "columns": ["Rockenhof", "St. Gabriel"],   # bereinigter Raumname (ohne "Kirche ") = Spaltenüberschrift
+    "unassigned_title": "Nicht zugeordnete Gottesdienste am Heiligabend",
+    "title_font_size":  15,
+    "column_font_size": 11,
+    "service_title_font_size": 10,   # Uhrzeit + Titel (ExtraBold)
+    "time_col_cm":   1.1,
+    "column_gap_cm": 0.4,
+    "space_after_service_pt": 8,
+    # Kasten am Ende der letzten Spalte (<b>...</b> = ExtraBold)
+    "box_text": ("Die Gottesdienste am <b>Heilig Abend</b> in der <b>Region</b> finden Sie unter: "
+                 "www.kircheoberalsterbergstedt.de, www.cantatekirche.de und www.kirche-tangstedt.de."),
+    "box_line_width_pt": 1.5,
+    "box_padding_pt":    5,
 }
+
+PDF_DESIGNS = {
+    "VOL": {**_PDF_DESIGN_STANDARD, "christmas_eve_page": _HEILIGABEND_SEITE_VOL},
+    # Am 24.12. nur die Gottesdienste der eigenen ChurchTools-Instanz anzeigen
+    "DUV": {**_PDF_DESIGN_STANDARD, "christmas_eve_own_only": True},
+    # Am 24.12. nur eigene Gottesdienste, eine Tabellenzeile je Standort (alphabetisch)
+    "OAB": {**_PDF_DESIGN_STANDARD, "christmas_eve_own_only": True, "christmas_eve_by_location": True},
+}
+# OAB in Cyan: Monatsnamen 100 % Cyan, alle Hintergrundtönungen 15 % Cyan (unabhängig von der Jahreszeit)
+_FARBE_CYAN = (100, 0, 0, 0)
+PDF_DESIGNS["OAB_CYAN"] = {**PDF_DESIGNS["OAB"],
+                           "month_colors_cmyk": {m: _FARBE_CYAN for m in range(1, 13)},
+                           "highlight_opacity": 0.15}
 
 def _cmyk(values, opacity=1.0):
     c, m, y, k = (v / 100 * opacity for v in values)
@@ -687,7 +726,7 @@ class _GemeindebriefDocTemplate(BaseDocTemplate):
         if isinstance(flowable, (_DayBlock, _DateHeading)):
             self.day_records.append((self.page, flowable.day_idx))
 
-def _pdf_story(days, highlight_gemeinde, design, color_month_by_day, frame_height):
+def _pdf_story(days, highlight_gemeinde, design, color_month_by_day, frame_width, frame_height):
     text_color = _cmyk(design["text_color_cmyk"])
     line_color = _cmyk(design["line_color_cmyk"])
     pad_v, pad_h = design["cell_padding_v_pt"], design["cell_padding_h_pt"]
@@ -720,7 +759,19 @@ def _pdf_story(days, highlight_gemeinde, design, color_month_by_day, frame_heigh
             # Hinweiszeile über die ganze Breite, ohne Hintergrund
             data.append([Paragraph(escape(day["note"]), cell_style), "", ""])
             style.append(("SPAN", (0, 0), (-1, 0)))
-        for row, s in enumerate(day["services"]):
+        services = day["services"]
+        if design.get("christmas_eve_by_location") and (day["date"].month, day["date"].day) == (12, 24):
+            # 24.12.: eine Zeile je Standort (alphabetisch) mit "Standort:" und darunter
+            # je Gottesdienst "Uhrzeit Titel | Leitung | Untertitel"
+            for row, standort in enumerate(sorted({s["standort"] for s in services})):
+                lines = [f'<font name="{design["font_semibold"]}">{escape(standort)}:</font>']
+                lines += [escape(f'{s["beginn"]} {s["description"]}') for s in services if s["standort"] == standort]
+                data.append([Paragraph("<br/>".join(lines), cell_style), "", ""])
+                style.append(("SPAN", (0, row), (-1, row)))
+                if any(s["gemeinde"] == highlight_gemeinde for s in services if s["standort"] == standort):
+                    style.append(("BACKGROUND", (0, row), (-1, row), highlight_color))
+            services = []
+        for row, s in enumerate(services):
             ort = f'<font name="{design["font_semibold"]}">{escape(s["standort"])}</font>'
             if s["raum"]:
                 ort += f' ({escape(s["raum"])})'
@@ -735,6 +786,102 @@ def _pdf_story(days, highlight_gemeinde, design, color_month_by_day, frame_heigh
                                frame_height))
     if not story:
         story.append(Paragraph("Keine Gottesdienste im gewählten Zeitraum.", cell_style))
+    if design.get("christmas_eve_page"):
+        for day in days:
+            if "christmas_eve_services" in day:
+                story += _christmas_eve_pages(day["christmas_eve_services"], design, frame_width, frame_height)
+    return story
+
+def _christmas_eve_pages(services, design, frame_width, frame_height):
+    """Heiligabend-Extraseite(n): Gottesdienste der Gemeinde in Spalten je Raum (Uhrzeit + Titel fett,
+    darunter Untertitel und Leitung), Kasten mit Hinweis auf die Region am Ende der letzten Spalte.
+    Passt eine Spalte nicht auf die Seite, geht es auf einer weiteren Seite weiter.
+    Gottesdienste der Gemeinde in anderen Räumen kommen auf eine eigene Seite."""
+    cfg = design["christmas_eve_page"]
+    services = [s for s in services if s["gemeinde"] == cfg["gemeinde"]]
+    if not services:
+        return []
+    red = _cmyk(design["month_colors_cmyk"][12])
+    text_color = _cmyk(design["text_color_cmyk"])
+    body = ParagraphStyle("he_body", fontName=design["font_regular"], fontSize=design["font_size"],
+                          leading=design["leading"], textColor=text_color)
+    bold = ParagraphStyle("he_bold", parent=body, fontName=design["font_extrabold"],
+                          fontSize=cfg["service_title_font_size"], leading=cfg["service_title_font_size"] * 1.2)
+    title_style = ParagraphStyle("he_title", fontName=design["font_extrabold"], fontSize=cfg["title_font_size"],
+                                 leading=cfg["title_font_size"] * 1.3, textColor=red, alignment=TA_CENTER,
+                                 spaceAfter=cfg["title_font_size"] * 0.6)
+    column_style = ParagraphStyle("he_col", parent=title_style, fontSize=cfg["column_font_size"],
+                                  leading=cfg["column_font_size"] * 1.3, spaceAfter=0)
+    no_padding = [("VALIGN", (0, 0), (-1, -1), "TOP"),
+                  ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                  ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]
+    spacing = cfg["space_after_service_pt"]
+
+    def service_block(s, width, with_location=False):
+        lines = []
+        if with_location:
+            lines.append(escape(s["standort"] + (f" ({s['raum']})" if s["raum"] else "")))
+        if s["untertitel"]:
+            lines.append(escape(s["untertitel"]).replace("\r\n", "<br/>").replace("\n", "<br/>"))
+        if s["leitung"]:
+            lines.append(escape(s["leitung"]))
+        time_w = cfg["time_col_cm"] * cm
+        data = [[Paragraph(escape(s["beginn"].replace(":", ".")), bold), Paragraph(escape(s["name"]), bold)]]
+        if lines:
+            data.append(["", Paragraph("<br/>".join(lines), body)])
+        return [Table(data, colWidths=[time_w, width - time_w], style=TableStyle(no_padding)), Spacer(1, spacing)]
+
+    def region_box(width):
+        pad = cfg["box_padding_pt"]
+        text = cfg["box_text"].replace("<b>", f'<font name="{design["font_extrabold"]}">').replace("</b>", "</font>")
+        return [Spacer(1, spacing),
+                Table([[Paragraph(text, body)]], colWidths=[width], style=TableStyle([
+                    ("BOX", (0, 0), (-1, -1), cfg["box_line_width_pt"], red),
+                    ("LEFTPADDING", (0, 0), (-1, -1), pad), ("RIGHTPADDING", (0, 0), (-1, -1), pad),
+                    ("TOPPADDING", (0, 0), (-1, -1), pad), ("BOTTOMPADDING", (0, 0), (-1, -1), pad),
+                ]))]
+
+    def height(items, width):
+        return sum(f.wrap(width, frame_height)[1] for f in items)
+
+    # --- Spaltenseite(n) ---
+    n = len(cfg["columns"])
+    gap = cfg["column_gap_cm"] * cm
+    col_w = (frame_width - gap * (n - 1)) / n
+    columns = [[service_block(s, col_w) for s in services if s["raum"] == col_name] for col_name in cfg["columns"]]
+    columns[-1].append(region_box(col_w))  # Kasten am Ende der letzten Spalte
+    widths = []
+    for i in range(n):
+        widths += [col_w] + ([gap] if i < n - 1 else [])
+
+    title_h = height([Paragraph(escape(cfg["title"]), title_style)], frame_width) + title_style.spaceAfter
+    head_h = max(height([Paragraph(escape(c), column_style)], col_w) for c in cfg["columns"])
+    avail = frame_height - title_h - head_h - spacing - 2  # 2pt Reserve für Rundungen
+    story = []
+    while any(columns):
+        page_cols = []
+        for blocks in columns:
+            taken, used = [], 0
+            while blocks:
+                h = height(blocks[0], col_w)
+                if taken and used + h > avail:
+                    break  # Rest der Spalte auf der nächsten Seite
+                taken += blocks.pop(0)
+                used += h
+            page_cols.append(taken)
+        head_row, body_row = [], []
+        for i, col_name in enumerate(cfg["columns"]):
+            head_row += [Paragraph(escape(col_name), column_style)] + ([""] if i < n - 1 else [])
+            body_row += [page_cols[i]] + ([""] if i < n - 1 else [])
+        story += [PageBreak(), Paragraph(escape(cfg["title"]), title_style),
+                  Table([head_row, [""] * len(widths), body_row], colWidths=widths,
+                        rowHeights=[None, spacing, None], style=TableStyle(no_padding))]
+
+    # --- Nicht zugeordnete Gottesdienste (andere Räume oder ohne Raumbuchung) ---
+    unassigned = [s for s in services if s["raum"] not in cfg["columns"]]
+    if unassigned:
+        story += [PageBreak(), Paragraph(escape(cfg["unassigned_title"]), title_style)]
+        story += [KeepTogether(service_block(s, frame_width, with_location=True)) for s in unassigned]
     return story
 
 def _render_pdf(days, highlight_gemeinde, design, color_month_by_day, title):
@@ -744,11 +891,25 @@ def _render_pdf(days, highlight_gemeinde, design, color_month_by_day, title):
         output, pagesize=(design["page_width_cm"] * cm, design["page_height_cm"] * cm),
         leftMargin=margin, rightMargin=margin, topMargin=margin, bottomMargin=margin,
         title=title, author="ChurchTools Gottesdienst-Export")
-    doc.build(_pdf_story(days, highlight_gemeinde, design, color_month_by_day, doc.height))
+    doc.build(_pdf_story(days, highlight_gemeinde, design, color_month_by_day, doc.width, doc.height))
     return output.getvalue(), doc.day_records
+
+def _only_own_on_christmas_eve(days, gemeinde):
+    """Am 24.12. nur die Gottesdienste der eigenen Gemeinde behalten; ein 24.12. ohne eigene
+    Gottesdienste (und ohne Seitenhinweis) entfällt ganz."""
+    result = []
+    for day in days:
+        if (day["date"].month, day["date"].day) == (12, 24):
+            day = {**day, "services": [s for s in day["services"] if s["gemeinde"] == gemeinde]}
+            if not day["services"] and not day.get("note"):
+                continue
+        result.append(day)
+    return result
 
 def create_pdf(days, highlight_gemeinde, design):
     _register_pdf_fonts(design)
+    if design.get("christmas_eve_own_only") or design.get("christmas_eve_by_location"):
+        days = _only_own_on_christmas_eve(days, highlight_gemeinde)
     title = f"Gottesdienste - {highlight_gemeinde}"
     # Lauf 1 ermittelt die Seitenumbrüche (die Farben ändern das Layout nicht).
     _, day_records = _render_pdf(days, highlight_gemeinde, design,
