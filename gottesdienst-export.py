@@ -608,7 +608,10 @@ PDF_DESIGNS = {
     # Am 24.12. nur die Gottesdienste der eigenen ChurchTools-Instanz anzeigen
     "DUV": {**_PDF_DESIGN_STANDARD, "christmas_eve_own_only": True},
     # Am 24.12. nur eigene Gottesdienste, eine Tabellenzeile je Standort (alphabetisch)
-    "OAB": {**_PDF_DESIGN_STANDARD, "christmas_eve_own_only": True, "christmas_eve_by_location": True},
+    # Abweichende Standort-Anzeigenamen nur am 24.12. (gilt auch für OAB_CYAN)
+    "OAB": {**_PDF_DESIGN_STANDARD, "christmas_eve_own_only": True, "christmas_eve_by_location": True,
+            "christmas_eve_location_names": {
+                "Wohldorf-Ohlstedt": "Wohldorf-Ohlstedt (im Rathausgarten am U-Bahnhof Ohlstedt)"}},
 }
 # OAB in Cyan: Monatsnamen 100 % Cyan, alle Hintergrundtönungen 15 % Cyan (unabhängig von der Jahreszeit)
 _FARBE_CYAN = (100, 0, 0, 0)
@@ -763,8 +766,10 @@ def _pdf_story(days, highlight_gemeinde, design, color_month_by_day, frame_width
         if design.get("christmas_eve_by_location") and (day["date"].month, day["date"].day) == (12, 24):
             # 24.12.: eine Zeile je Standort (alphabetisch) mit "Standort:" und darunter
             # je Gottesdienst "Uhrzeit Titel | Leitung | Untertitel"
+            location_names = design.get("christmas_eve_location_names", {})
             for row, standort in enumerate(sorted({s["standort"] for s in services})):
-                lines = [f'<font name="{design["font_semibold"]}">{escape(standort)}:</font>']
+                name = location_names.get(standort, standort)
+                lines = [f'<font name="{design["font_semibold"]}">{escape(name)}:</font>']
                 lines += [escape(f'{s["beginn"]} {s["description"]}') for s in services if s["standort"] == standort]
                 data.append([Paragraph("<br/>".join(lines), cell_style), "", ""])
                 style.append(("SPAN", (0, row), (-1, row)))
