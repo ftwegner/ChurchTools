@@ -36,8 +36,15 @@ if sys.version_info < (3, 6):
 # Lese die SMTP Konfiguration aus der Umgebungsvariablen
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 
-if use_email and not SMTP_PASSWORD:
-    raise ValueError("Das SMTP Passwort ist nicht gesetzt. Bitte die Umgebungsvariable 'SMTP_PASSWORD' definieren.")
+# Beim E-Mail-Versand müssen alle SMTP-Angaben als Umgebungsvariablen gesetzt sein
+_missing = [name for name, value in (("SMTP_SERVER", smtp_server), ("SMTP_USERNAME", smtp_username),
+                                     ("EMAIL_RECIPIENTS", email_recipients), ("SMTP_PASSWORD", SMTP_PASSWORD))
+            if not value]
+if use_email and _missing:
+    raise ValueError("USE_EMAIL ist aktiv, aber folgende Umgebungsvariablen fehlen: " + ", ".join(_missing))
+
+# Adresse der Web-Seite, von der der Plan heruntergeladen werden kann (Hinweis im Excel-README; optional)
+GOTTESDIENSTE_WEB_URL = os.getenv("GOTTESDIENSTE_WEB_URL", "")
 
 # Konfigurationsparameter für verschiedene ChurchTools Instanzen
 parameters = [
@@ -457,9 +464,12 @@ def _build_readme_sheet(wb):
     text("    b)  Der Untertitel des Kalendereintrags")
     text("    c)  Die Pastoren/Leitung aus dem Dienstplan")
     blank()
-    text("\u00c4nderungen oder Anpassungen werden in ChurchTools vorgenommen. Von", h=28)
-    text("https://example.com/gottesdienste", font=_LINK, link="https://example.com/gottesdienste")
-    text("kann der aktualisierte Plan jederzeit heruntergeladen werden.")
+    if GOTTESDIENSTE_WEB_URL:
+        text("\u00c4nderungen oder Anpassungen werden in ChurchTools vorgenommen. Von", h=28)
+        text(GOTTESDIENSTE_WEB_URL, font=_LINK, link=GOTTESDIENSTE_WEB_URL)
+        text("kann der aktualisierte Plan jederzeit heruntergeladen werden.")
+    else:
+        text("\u00c4nderungen oder Anpassungen werden in ChurchTools vorgenommen.")
     return ws
 
 

@@ -156,8 +156,53 @@ Das Repository ist jetzt auf deinem Rechner verfügbar. Du kannst es in <a href=
 <h4 id="churchtools-access-token-besorgen">ChurchTools Access Token besorgen</h4>
 <p>In ChurchTools Web bekommst du das Token in <code>Personen &amp; Gruppen &gt; Personenliste &gt; „Person A“ &gt; Berechtigungen &gt; Login-Token</code></p>
 <h3 id="2-umgebungsvariablen-setzen">2. Umgebungsvariablen setzen</h3>
-<p><code>CHURCHTOOLS_TOKEN</code> 
- <code>SMTP_PASSWORD</code> - wenn die EMail Funktionalität genutzt werden soll</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Wann nötig</th>
+<th>Beschreibung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CHURCHTOOLS_TOKEN</code></td>
+<td>immer</td>
+<td>ChurchTools Access Token</td>
+</tr>
+<tr>
+<td><code>USE_EMAIL</code></td>
+<td>optional</td>
+<td><code>true</code> → E-Mail-Versand einschalten (Standard: aus)</td>
+</tr>
+<tr>
+<td><code>SMTP_SERVER</code></td>
+<td>bei E-Mail-Versand</td>
+<td>Hostname des SMTP-Servers, z. B. <code>smtp.example.com</code></td>
+</tr>
+<tr>
+<td><code>SMTP_PORT</code></td>
+<td>optional</td>
+<td>Port des SMTP-Servers (Standard: <code>587</code>, STARTTLS)</td>
+</tr>
+<tr>
+<td><code>SMTP_USERNAME</code></td>
+<td>bei E-Mail-Versand</td>
+<td>Absenderadresse / Login des SMTP-Kontos</td>
+</tr>
+<tr>
+<td><code>SMTP_PASSWORD</code></td>
+<td>bei E-Mail-Versand</td>
+<td>Passwort des SMTP-Kontos</td>
+</tr>
+<tr>
+<td><code>EMAIL_RECIPIENTS</code></td>
+<td>bei E-Mail-Versand</td>
+<td>Komma-separierte Liste der Empfänger</td>
+</tr>
+</tbody>
+</table>
+<p>Die Schritte unten zeigen das Setzen am Beispiel <code>CHURCHTOOLS_TOKEN</code>; die anderen Variablen werden genauso angelegt.</p>
 <h4 id="windows">Windows</h4>
 <p>Um die Umgebungsvariable <code>CHURCHTOOLS_TOKEN</code> für den aktuellen Benutzer in Windows zu setzen, führe die folgenden Schritte aus:</p>
 <ol>
@@ -169,7 +214,7 @@ Das Repository ist jetzt auf deinem Rechner verfügbar. Du kannst es in <a href=
 <li>
 <p><strong>Neue Benutzer-Umgebungsvariable hinzufügen</strong>:</p>
 </li>
-<li>Klicke unter <strong>Benutzervariablen für frank</strong> auf <strong>Neu</strong>.</li>
+<li>Klicke unter <strong>Benutzervariablen für &lt;Benutzername&gt;</strong> auf <strong>Neu</strong>.</li>
 <li>Setze den Namen der Variablen auf <code>CHURCHTOOLS_TOKEN</code>.</li>
 <li>
 <p>Setze den Wert der Variablen auf deinen Token.</p>
@@ -305,5 +350,5 @@ BASE_URL = &quot;https://volksdorf.church.tools/api&quot;
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-05-10 05:24:54.086881+00:00
+Build Date UTC : 2026-10-20 11:11:21.448709+00:00
 -->

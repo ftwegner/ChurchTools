@@ -177,15 +177,43 @@ ef_valid_years = 3
 # Wieviele Monate vor Ablauf eines Führungszeugnisses soll gewarnt werden
 ef_warn_months = 3
 
-# SMTP Server Konfiguration für den SMTP Emaildienst
-# Du kannst den Server und Port bei Bedarf für andere Dienste anpassen
-use_email = True  # Wenn True wird eine Email gesendet
-smtp_server = 'smtp.example.com'
-smtp_port = 587  # Nutze 587 für TLS
-smtp_username = 'absender@example.com' # Das assword ist in der Umgebungsvariablen SMTP_PASSWORD
-email_recipients = 'absender@example.com' # Komma-separierte Liste der Empfänger
 # -----------------------------------------------------------------------
-</code></pre></div>
+</code></pre>
+<p>Die E-Mail-Einstellungen stehen <strong>nicht</strong> in <code>config.py</code>, sondern werden aus Umgebungsvariablen gelesen (siehe <a href="../../#2-umgebungsvariablen-setzen">Umgebungsvariablen setzen</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Beschreibung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>USE_EMAIL</code></td>
+<td><code>true</code> → der Statusbericht wird zusätzlich per E-Mail versendet (Standard: aus)</td>
+</tr>
+<tr>
+<td><code>SMTP_SERVER</code></td>
+<td>Hostname des SMTP-Servers, z. B. <code>smtp.example.com</code></td>
+</tr>
+<tr>
+<td><code>SMTP_PORT</code></td>
+<td>Port des SMTP-Servers (Standard: <code>587</code>, STARTTLS)</td>
+</tr>
+<tr>
+<td><code>SMTP_USERNAME</code></td>
+<td>Absenderadresse / Login des SMTP-Kontos</td>
+</tr>
+<tr>
+<td><code>SMTP_PASSWORD</code></td>
+<td>Passwort des SMTP-Kontos</td>
+</tr>
+<tr>
+<td><code>EMAIL_RECIPIENTS</code></td>
+<td>Komma-separierte Liste der Empfänger</td>
+</tr>
+</tbody>
+</table></div>
             </div>
         </div>
 

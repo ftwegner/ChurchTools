@@ -20,10 +20,19 @@ ef_valid_years = 3
 # Wieviele Monate vor Ablauf eines Führungszeugnisses soll gewarnt werden
 ef_warn_months = 3
 
-# SMTP Server Konfiguration für den SMTP Emaildienst
-# Du kannst den Server und Port bei Bedarf für andere Dienste anpassen
-use_email = True  # Wenn True wird eine Email gesendet
-smtp_server = 'smtp.example.com'
-smtp_port = 587  # Nutze 587 für TLS
-smtp_username = 'absender@example.com' # Das assword ist in der Umgebungsvariablen SMTP_PASSWORD
-email_recipients = 'absender@example.com' # Komma-separierte Liste der Empfänger
+# E-Mail-Versand
+# -----------------------------------------------------------------------
+# Alle systemabhängigen Angaben (E-Mail-Adressen, SMTP-Server) kommen aus Umgebungsvariablen,
+# damit diese Datei ohne persönliche Daten veröffentlicht werden kann.
+# USE_EMAIL:        "true" → nach der Erstellung wird eine E-Mail gesendet (Standard: aus)
+# SMTP_SERVER:      Hostname des SMTP-Servers, z. B. smtp.example.com
+# SMTP_PORT:        Port des SMTP-Servers (Standard: 587 für STARTTLS)
+# SMTP_USERNAME:    Absenderadresse / Login des SMTP-Kontos
+# SMTP_PASSWORD:    Passwort des SMTP-Kontos (wird direkt in den Skripten gelesen)
+# EMAIL_RECIPIENTS: Komma-separierte Liste der Empfänger
+import os
+use_email = os.getenv("USE_EMAIL", "false").strip().lower() in ("1", "true", "yes", "ja")
+smtp_server = os.getenv("SMTP_SERVER", "")
+smtp_port = int(os.getenv("SMTP_PORT") or 587)
+smtp_username = os.getenv("SMTP_USERNAME", "")
+email_recipients = os.getenv("EMAIL_RECIPIENTS", "")

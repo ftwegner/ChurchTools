@@ -53,8 +53,18 @@ Damit die ChurchTools Utilities funktioneren, muss auf dem Rechner, auf dem die 
 In ChurchTools Web bekommst du das Token in `Personen & Gruppen > Personenliste > „Person A“ > Berechtigungen > Login-Token`
 
 ### 2. Umgebungsvariablen setzen
- `CHURCHTOOLS_TOKEN` 
- `SMTP_PASSWORD` - wenn die EMail Funktionalität genutzt werden soll
+
+| Variable | Wann nötig | Beschreibung |
+|---|---|---|
+| `CHURCHTOOLS_TOKEN` | immer | ChurchTools Access Token |
+| `USE_EMAIL` | optional | `true` → E-Mail-Versand einschalten (Standard: aus) |
+| `SMTP_SERVER` | bei E-Mail-Versand | Hostname des SMTP-Servers, z. B. `smtp.example.com` |
+| `SMTP_PORT` | optional | Port des SMTP-Servers (Standard: `587`, STARTTLS) |
+| `SMTP_USERNAME` | bei E-Mail-Versand | Absenderadresse / Login des SMTP-Kontos |
+| `SMTP_PASSWORD` | bei E-Mail-Versand | Passwort des SMTP-Kontos |
+| `EMAIL_RECIPIENTS` | bei E-Mail-Versand | Komma-separierte Liste der Empfänger |
+
+Die Schritte unten zeigen das Setzen am Beispiel `CHURCHTOOLS_TOKEN`; die anderen Variablen werden genauso angelegt.
 
 #### Windows
 Um die Umgebungsvariable `CHURCHTOOLS_TOKEN` für den aktuellen Benutzer in Windows zu setzen, führe die folgenden Schritte aus:
@@ -64,7 +74,7 @@ Um die Umgebungsvariable `CHURCHTOOLS_TOKEN` für den aktuellen Benutzer in Wind
    - Gehe zum Tab **Erweitert** und klicke auf **Umgebungsvariablen**.
 
 2. **Neue Benutzer-Umgebungsvariable hinzufügen**:
-   - Klicke unter **Benutzervariablen für frank** auf **Neu**.
+   - Klicke unter **Benutzervariablen für &lt;Benutzername&gt;** auf **Neu**.
    - Setze den Namen der Variablen auf `CHURCHTOOLS_TOKEN`.
    - Setze den Wert der Variablen auf deinen Token.
 

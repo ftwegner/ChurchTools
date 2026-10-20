@@ -26,8 +26,12 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 if not TOKEN:
     raise ValueError("Das Access Token ist nicht gesetzt. Bitte die Umgebungsvariable 'CHURCHTOOLS_TOKEN' definieren.")
 
-if use_email and not SMTP_PASSWORD:
-    raise ValueError("Das SMTP Passwort ist nicht gesetzt. Bitte die Umgebungsvariable 'SMTP_PASSWORD' definieren.")
+# Beim E-Mail-Versand müssen alle SMTP-Angaben als Umgebungsvariablen gesetzt sein
+_missing = [name for name, value in (("SMTP_SERVER", smtp_server), ("SMTP_USERNAME", smtp_username),
+                                     ("EMAIL_RECIPIENTS", email_recipients), ("SMTP_PASSWORD", SMTP_PASSWORD))
+            if not value]
+if use_email and _missing:
+    raise ValueError("USE_EMAIL ist aktiv, aber folgende Umgebungsvariablen fehlen: " + ", ".join(_missing))
 
 if not (isinstance(GROUP_ID, int) and GROUP_ID > 0):
     raise ValueError(f"GROUP_ID in der Datei config.py muss eine positive ganze Zahl sein. Gefunden: {GROUP_ID}")
