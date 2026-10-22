@@ -119,8 +119,10 @@ def get_services(from_date=None, to_date=None):
             # Kalender ID 2 ist der Gottesdienste Kalender, wir nehmen nur Events aus diesem Kalender
             "calendar_ids[]": CALENDAR_IDS,
             "from": _from,
-            # Das "to" Feld ist nötig, weil sonst nur Events des aktuellen Monats geladen werden
-            "to": _to,
+            # Das "to" Feld ist nötig, weil sonst nur Events des aktuellen Monats geladen werden.
+            # /events behandelt "to" exklusiv (bis 00:00 Uhr), deshalb einen Tag mehr anfragen,
+            # damit Gottesdienste am letzten Tag des Zeitraums enthalten sind
+            "to": (date.fromisoformat(_to) + timedelta(days=1)).isoformat(),
             # Lade auch Details zu Diensten wie Musik und Pastor*in
             "include": "eventServices",
             # Keine abgesagten Events
